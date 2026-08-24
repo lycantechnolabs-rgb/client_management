@@ -419,6 +419,7 @@ section("8. File upload");
 {
   const { readFileSync } = await import("node:fs");
   const src = readFileSync("src/app/admin/actions.ts", "utf8");
+  const storage = readFileSync("src/lib/files.ts", "utf8");
 
   check("upload size is capped", src.includes("MAX_UPLOAD_BYTES"));
   check("MIME type is allow-listed", src.includes("ALLOWED"));
@@ -429,23 +430,94 @@ section("8. File upload");
   );
   check(
     "extension derived from validated MIME, not filename",
-    src.includes("EXTENSION_FOR_TYPE") && !src.includes("path.extname(file.name)"),
+    storage.includes("EXTENSION_FOR_TYPE") &&
+      !storage.includes("path.extname(file.name)"),
   );
-  check("stored filename is a random UUID", src.includes("randomUUID()"));
-
-  const res = await fetch(`${BASE}/uploads/estate-1.svg`);
+  check("stored filename is a random UUID", storage.includes("randomUUID()"));
   check(
-    "uploads served with nosniff",
-    res.headers.get("x-content-type-options") === "nosniff",
+    "uploads are written outside public/",
+    storage.includes('"private-uploads"') && !src.includes('"public", "uploads"'),
+    "public/ is served with no session check",
   );
   check(
-    "uploads served under a sandbox CSP",
-    (res.headers.get("content-security-policy") ?? "").includes("sandbox"),
+    "storage key cannot escape the private directory",
+    storage.includes("resolveStoredPath") && storage.includes("path.resolve"),
   );
 
-  W(
-    "uploads directory is publicly readable",
-    "demo only — must move to Cloudinary private assets + signed URLs",
+  // The real test: an attachment is readable only by the grower who owns it.
+  const mine = await db.attachment.findFirst({
+    where: { clientId: thomasUser.clientId, storageKey: { not: null } },
+    select: { id: true },
+  });
+  const theirs = await db.attachment.findFirst({
+    where: { clientId: { not: thomasUser.clientId }, storageKey: { not: null } },
+    select: { id: true, storageKey: true },
+  });
+
+  if (!mine || !theirs) {
+    W("no private attachments seeded", "run `npm run db:reset` and re-run");
+  } else {
+    const anon = await fetch(`${BASE}/api/files/${theirs.id}`, {
+      redirect: "manual",
+    });
+    check(
+      "signed-out request for an attachment is refused",
+      anon.status === 404,
+      `status ${anon.status}`,
+    );
+
+    const cross = await get(`/api/files/${theirs.id}`, thomas.jar);
+    check(
+      "a grower CANNOT read another grower's attachment",
+      cross.status === 404,
+      `status ${cross.status}`,
+    );
+
+    const own = await get(`/api/files/${mine.id}`, thomas.jar);
+    check(
+      "a grower CAN read their own attachment",
+      own.status === 200,
+      `status ${own.status}`,
+    );
+    check(
+      "attachment served with nosniff",
+      own.headers.get("x-content-type-options") === "nosniff",
+    );
+    check(
+      "attachment served under a sandbox CSP",
+      (own.headers.get("content-security-policy") ?? "").includes("sandbox"),
+    );
+    check(
+      "attachment is not cached by shared caches",
+      (own.headers.get("cache-control") ?? "").includes("private"),
+    );
+
+    // Knowing the on-disk name must not be enough to fetch the bytes.
+    const byKey = await fetch(`${BASE}/uploads/${theirs.storageKey}`, {
+      redirect: "manual",
+    });
+    check(
+      "the stored file is not reachable under /uploads",
+      byKey.status === 404,
+      `status ${byKey.status}`,
+    );
+
+    const traversal = await get(
+      `/api/files/${encodeURIComponent("../../.env")}`,
+      thomas.jar,
+    );
+    check(
+      "path traversal in the file id is refused",
+      traversal.status === 404,
+      `status ${traversal.status}`,
+    );
+  }
+
+  // Product photography stays public on purpose — it is shop imagery.
+  const pub = await fetch(`${BASE}/uploads/product-1.svg`);
+  check(
+    "public store imagery still served with nosniff",
+    pub.headers.get("x-content-type-options") === "nosniff",
   );
 }
 
@@ -496,10 +568,16 @@ section("10. XSS sinks");
   const hits = (needle) =>
     files.filter((f) => readFileSync(f, "utf8").includes(needle));
 
+  /** Same, but as a regex — for needles that need a word boundary. */
+  const matches = (re) => files.filter((f) => re.test(readFileSync(f, "utf8")));
+
   check(`scanned ${files.length} source files`, files.length > 20);
   check("no dangerouslySetInnerHTML", hits("dangerouslySetInnerHTML").length === 0,
     hits("dangerouslySetInnerHTML").join(", "));
-  check("no eval(", hits("eval(").length === 0, hits("eval(").join(", "));
+  // `redis.eval(` is Upstash running a Lua script server-side — a method call
+  // on a client object, not the JS evaluator. Only a bare eval( is a finding.
+  const evals = matches(/(^|[^.\w])eval\s*\(/m);
+  check("no eval(", evals.length === 0, evals.join(", "));
   check("no innerHTML assignment", hits("innerHTML").length === 0,
     hits("innerHTML").join(", "));
   check("no $queryRawUnsafe", hits("$queryRawUnsafe").length === 0);

@@ -4,6 +4,7 @@ import { Camera, FlaskConical, Paperclip, Users } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { ACTIVITY_TYPES, activityLabel } from "@/lib/constants";
 import { kg, money, shortDate } from "@/lib/utils";
+import { attachmentHref } from "@/lib/files";
 
 type Props = {
   href: string;
@@ -59,7 +60,8 @@ export function ActivityCard({ href, activity }: Props) {
                 className="relative aspect-[4/3] overflow-hidden rounded-lg bg-tint"
               >
                 <Image
-                  src={a.url}
+                  src={attachmentHref(a)}
+                  unoptimized
                   alt={a.caption ?? ""}
                   fill
                   sizes="(max-width: 640px) 33vw, 160px"

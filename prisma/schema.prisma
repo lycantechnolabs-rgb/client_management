@@ -221,7 +221,11 @@ model Attachment {
   plot       Plot?     @relation(fields: [plotId], references: [id], onDelete: SetNull)
 
   kind      String // IMAGE | VIDEO | DOCUMENT
-  url       String
+  /// Legacy/public path. Empty for anything stored privately — read the file
+  /// through /api/files/<attachment id> instead, which checks ownership.
+  url        String
+  /// Filename inside private-uploads/. Set means the bytes are NOT public.
+  storageKey String?
   filename  String
   mimeType  String?
   sizeBytes Int?

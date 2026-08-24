@@ -43,3 +43,6 @@ next-env.d.ts
 # local sqlite database — regenerate with `npm run db:reset`
 /prisma/dev.db
 /prisma/dev.db-journal
+
+# client documents and photos — never world-readable, never committed
+/private-uploads/

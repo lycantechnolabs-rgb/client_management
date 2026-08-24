@@ -1,14 +1,12 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hash } from "@node-rs/argon2";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { writeStoredFile } from "@/lib/files";
 import { requireAdmin } from "@/lib/session";
 import { makeTempPassword } from "@/lib/utils";
 
@@ -25,23 +23,12 @@ const ALLOWED = {
   DOCUMENT: ["application/pdf"],
 };
 
-/** Extension is chosen by us from the validated type, never from the filename. */
-const EXTENSION_FOR_TYPE: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-  "image/avif": ".avif",
-  "video/mp4": ".mp4",
-  "video/quicktime": ".mov",
-  "video/webm": ".webm",
-  "application/pdf": ".pdf",
-};
-
 /**
- * Demo upload: writes to /public/uploads.
- * In production this becomes a Cloudinary upload with the asset marked
- * private and delivered through a signed, expiring URL — public/ is
- * world-readable and must not hold client documents.
+ * Store an upload privately and describe the row to create for it.
+ *
+ * The bytes go to private-uploads/, never public/ — see src/lib/files.ts.
+ * Readers reach them through /api/files/<attachment id>, which checks that
+ * the signed-in grower owns the attachment.
  */
 async function saveUpload(file: File) {
   if (file.size === 0) return null;
@@ -59,21 +46,13 @@ async function saveUpload(file: File) {
 
   if (!kind) throw new Error(`${file.name} is not an accepted file type.`);
 
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-
-  // The extension is derived from the MIME type we just allow-listed, never
-  // from file.name. Taking it from the filename let an uploader save
-  // "photo.html" (declaring image/jpeg) into a world-readable directory on
-  // this origin — stored XSS, and any script there could read a session.
-  const ext = EXTENSION_FOR_TYPE[file.type] ?? ".bin";
-  const filename = `${randomUUID()}${ext}`;
   const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, filename), bytes);
+  const storageKey = await writeStoredFile(bytes, file.type);
 
   return {
     kind,
-    url: `/uploads/${filename}`,
+    url: "",
+    storageKey,
     filename: file.name,
     mimeType: file.type,
     sizeBytes: file.size,
@@ -326,6 +305,7 @@ export async function createActivity(
             clientId,
             kind: f.kind,
             url: f.url,
+            storageKey: f.storageKey,
             filename: f.filename,
             mimeType: f.mimeType,
             sizeBytes: f.sizeBytes,

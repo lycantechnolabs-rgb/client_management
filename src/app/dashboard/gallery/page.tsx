@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { requireClient } from "@/lib/session";
+import { attachmentHref } from "@/lib/files";
 import { getMedia } from "@/lib/queries";
 import { EmptyState, SectionHeading } from "@/components/ui";
 import { VideoPlayer } from "@/components/video-player";
@@ -31,7 +32,7 @@ export default async function GalleryPage() {
           <SectionHeading title={`Videos (${videos.length})`} />
           <div className="grid gap-3 sm:grid-cols-2">
             {videos.map((v) => (
-              <VideoPlayer key={v.id} src={v.url} caption={v.caption} />
+              <VideoPlayer key={v.id} src={attachmentHref(v)} caption={v.caption} />
             ))}
           </div>
         </section>
@@ -44,7 +45,8 @@ export default async function GalleryPage() {
             const inner = (
               <>
                 <Image
-                  src={img.url}
+                  src={attachmentHref(img)}
+                  unoptimized
                   alt={img.caption ?? "Estate photo"}
                   fill
                   sizes="(max-width: 640px) 50vw, 25vw"

@@ -1,5 +1,6 @@
 import { Download, FileText } from "lucide-react";
 import { requireClient } from "@/lib/session";
+import { attachmentHref } from "@/lib/files";
 import { getDocuments } from "@/lib/queries";
 import { Card, CardBody, EmptyState } from "@/components/ui";
 import { DOCUMENT_CATEGORIES } from "@/lib/constants";
@@ -48,7 +49,7 @@ export default async function DocumentsPage() {
                 {items.map((d) => (
                   <li key={d.id}>
                     <a
-                      href={d.url}
+                      href={attachmentHref(d)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 px-4 py-3.5 hover:bg-cream sm:px-5"

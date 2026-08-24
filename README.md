@@ -33,6 +33,8 @@ Order tracking demo: `CRD-7K3M9Q` with `priya@example.com`.
 | `npm run db:reset` | Wipe and reseed the database |
 | `npm run db:studio` | Browse the data in Prisma Studio |
 | `npm run placeholders` | Regenerate the placeholder imagery |
+| `node scripts/e2e.mjs` | End-to-end check (needs the dev server up) |
+| `node scripts/security-suite.mjs` | Security suite — authn, isolation, uploads, headers (needs the dev server up, and a restart between runs) |
 
 ## Stack
 
@@ -62,6 +64,13 @@ The rule the whole project rests on:
 - The Credentials provider forces JWT sessions, so the `jwt` callback re-reads the user on every request — deactivating a grower logs them out immediately rather than at token expiry.
 - Verified: a signed-in grower requesting another grower's activity gets a 404 with no data in the response.
 
+Attachments follow the same rule. Photos and documents are written to
+`private-uploads/`, which is outside `public/` and so is never served off the
+filesystem. The only way to read one is `/api/files/<attachment id>`, which
+looks the row up and answers 404 unless the caller is Jinto or the grower who
+owns it — a 403 would confirm the file exists. Knowing the on-disk name buys
+nothing: it is not reachable under any public path.
+
 ### Mobile-first
 
 Jinto records work standing in an estate on his phone, and the growers are on phones too. So:
@@ -76,7 +85,7 @@ Jinto records work standing in an estate on his phone, and the growers are on ph
 | Area | Now | Production |
 | --- | --- | --- |
 | Database | SQLite (`prisma/dev.db`) | PostgreSQL on Neon — change `provider` in `schema.prisma` |
-| File uploads | Written to `public/uploads` | **Cloudinary, private assets, signed expiring URLs.** `public/` is world-readable — client documents must not sit there |
+| File uploads | Written to `private-uploads/`, served through `/api/files/[id]` after an ownership check | Cloudinary private assets with signed expiring URLs — same route, different storage backend |
 | Payment | Order marked paid directly | Razorpay, confirmed only after server-side webhook signature check |
 | Money | `Float` rupees | `Int` paise, to avoid rounding on order totals |
 | Imagery | Generated SVG placeholders | Real estate and product photography |

@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
-import { statSync } from "node:fs";
+import { copyFileSync, mkdirSync, rmSync, statSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { ACTIVITY_TYPES } from "../src/lib/constants";
 
@@ -43,20 +44,34 @@ const MIME: Record<string, string> = {
  * and if these specimens are ever replaced with real PDFs, the extension, the
  * MIME type and the size all follow the new file with no edit here.
  */
-function assetMeta(url: string, baseName: string) {
-  const ext = url.slice(url.lastIndexOf(".")).toLowerCase();
-  const path = join(process.cwd(), "public", url.replace(/^\//, ""));
+const PRIVATE_UPLOADS = join(process.cwd(), "private-uploads");
+
+/**
+ * Copy a seed asset into private storage and describe the Attachment row.
+ *
+ * Client photos and documents are not public files. They live in
+ * private-uploads/ and are served only through /api/files/<id>, which checks
+ * ownership — so the seed places them the same way a real upload would,
+ * rather than leaving them readable to anyone who guesses a path.
+ */
+function privateAsset(source: string, baseName: string) {
+  const ext = source.slice(source.lastIndexOf(".")).toLowerCase();
+  const from = join(process.cwd(), "public", source.replace(/^\//, ""));
+  const storageKey = `${randomUUID()}${ext}`;
 
   let sizeBytes: number | null = null;
   try {
-    sizeBytes = statSync(path).size;
+    sizeBytes = statSync(from).size;
+    copyFileSync(from, join(PRIVATE_UPLOADS, storageKey));
   } catch {
     // Seeding must not fail because an asset is missing; the portal already
     // copes with a null size by omitting it from the row.
-    console.warn(`  ! asset missing, size left null: ${url}`);
+    console.warn(`  ! asset missing, size left null: ${source}`);
   }
 
   return {
+    url: "",
+    storageKey,
     filename: `${baseName}${ext}`,
     mimeType: MIME[ext] ?? "application/octet-stream",
     sizeBytes,
@@ -73,6 +88,9 @@ async function main() {
   await db.auditLog.deleteMany();
   await db.message.deleteMany();
   await db.attachment.deleteMany();
+  // Attachment rows are gone, so the bytes they referenced are orphans.
+  rmSync(PRIVATE_UPLOADS, { recursive: true, force: true });
+  mkdirSync(PRIVATE_UPLOADS, { recursive: true });
   await db.activityWorker.deleteMany();
   await db.material.deleteMany();
   await db.activity.deleteMany();
@@ -259,7 +277,7 @@ async function main() {
       cost?: number;
     }[];
     images?: number[];
-    /** `name` is the base name — assetMeta appends the real file extension. */
+    /** `name` is the base name — privateAsset appends the real file extension. */
     docs?: {
       n: number;
       name: string;
@@ -541,8 +559,7 @@ async function main() {
             activityId: activity.id,
             plotId: target.plotIds[0],
             kind: "IMAGE",
-            url: IMG(n),
-            ...assetMeta(
+            ...privateAsset(
               IMG(n),
               `${item.type.toLowerCase()}-${activity.id.slice(-4)}-${i + 1}`,
             ),
@@ -557,8 +574,7 @@ async function main() {
             clientId: target.id,
             activityId: activity.id,
             kind: "DOCUMENT",
-            url: DOC(d.n),
-            ...assetMeta(DOC(d.n), d.name),
+            ...privateAsset(DOC(d.n), d.name),
             category: d.category,
             caption: d.caption,
           })),
@@ -591,8 +607,7 @@ async function main() {
       // A real, playable file. This row used to point at a poster image while
       // claiming to be a 24.8 MB mp4, so the gallery only "worked" because it
       // was rendering an image — a genuine upload broke the tile.
-      url: VIDEO_WALKTHROUGH,
-      ...assetMeta(VIDEO_WALKTHROUGH, "estate-walkthrough-june"),
+      ...privateAsset(VIDEO_WALKTHROUGH, "estate-walkthrough-june"),
       caption: "Walkthrough of the Cheruvally block after the second fertilizer round",
     },
   });
@@ -601,8 +616,7 @@ async function main() {
     data: {
       clientId: created[0].id,
       kind: "DOCUMENT",
-      url: DOC(3),
-      ...assetMeta(DOC(3), "Spice-Board-registration"),
+      ...privateAsset(DOC(3), "Spice-Board-registration"),
       category: "LICENCE",
       caption: "Spice Board registration copy (specimen)",
     },

@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { requireClient } from "@/lib/session";
+import { attachmentHref } from "@/lib/files";
 import { getActivityForClient } from "@/lib/queries";
 import { Badge, Card, CardBody, Divider, SectionHeading } from "@/components/ui";
 import { VideoPlayer } from "@/components/video-player";
@@ -88,11 +89,15 @@ export default async function ActivityDetail({
                 className="relative aspect-[4/3] overflow-hidden rounded-xl bg-tint"
               >
                 <Image
-                  src={img.url}
+                  src={attachmentHref(img)}
                   alt={img.caption ?? activity.title}
                   fill
                   sizes="(max-width: 640px) 50vw, 240px"
                   className="object-cover"
+                  // The optimizer fetches server-side without the session
+                  // cookie, so it would 404 on the authorizing route. Let the
+                  // browser fetch these itself.
+                  unoptimized
                 />
               </figure>
             ))}
@@ -105,7 +110,7 @@ export default async function ActivityDetail({
           <SectionHeading title="Video" />
           <div className="space-y-2">
             {videos.map((v) => (
-              <VideoPlayer key={v.id} src={v.url} caption={v.caption} />
+              <VideoPlayer key={v.id} src={attachmentHref(v)} caption={v.caption} />
             ))}
           </div>
         </section>
@@ -225,7 +230,7 @@ export default async function ActivityDetail({
             {docs.map((d) => (
               <a
                 key={d.id}
-                href={d.url}
+                href={attachmentHref(d)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-moss/40"

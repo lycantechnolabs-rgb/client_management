@@ -45,8 +45,19 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
       {
-        // Uploaded files are user-supplied bytes. Force them to download
-        // rather than render, so a crafted file cannot script this origin.
+        // Client attachments, served only after the route checks ownership.
+        // Headers set inside a route handler are overwritten by this config,
+        // so the sandbox has to be declared here to actually take effect.
+        source: "/api/files/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "Content-Security-Policy", value: "sandbox; default-src 'none'" },
+        ],
+      },
+      {
+        // Public store imagery. Still user-supplied bytes at heart, so the
+        // same sandbox applies — a crafted file must not script this origin.
         source: "/uploads/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
