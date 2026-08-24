@@ -1,0 +1,611 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   Design tokens, taken from the approved mockup.
+   Cream + deep forest green. This supersedes the "Primary: Blue" in the
+   Phase 3 UI/UX doc.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* Surfaces.
+
+     Cards were pure #ffffff on cream, which reads as a hole punched in the
+     page rather than as paper laid on it — the eye takes the brightest thing in
+     view as the light source, and a white card on a warm ground puts the light
+     in the wrong place. These are warm off-whites a few points off the cream,
+     so a card reads as a sheet catching the same light as everything else. */
+  --color-cream: #f6f3e9;
+  --color-cream-deep: #efeadb;
+  --color-surface: #fffdf6;
+  --color-surface-2: #fdfbf1;
+  --color-ink: #1a1a18;
+
+  /* Greens */
+  --color-forest: #2e4a1c;
+  --color-forest-600: #3a5f24;
+  --color-moss: #4a7c2f;
+  --color-sage: #7ba05b;
+  --color-tint: #e8efdd;
+
+  /* Accent — warm clay.
+
+     Everything above sits in a narrow yellow-green wedge (forest is hue 95°),
+     which is harmonious but gives the eye nowhere to land: on a long page every
+     element competes at the same temperature. Clay is hue 22° — far enough
+     round the wheel to read as a genuine counterpoint, but still an earth
+     pigment, so it belongs next to the greens rather than fighting them. It is
+     the colour of the laterite the estates are cut into and of a cured pod, so
+     it is on-subject as well as on-theory.
+
+     Used at roughly a tenth of the page: actions, live data, one accent per
+     section. Never for large fills — clay reads as heat, and heat is a signal.
+     4.6:1 on cream, so it is safe for body-size text. */
+  --color-clay: #a9521f;
+  --color-clay-600: #8c4218;
+  --color-clay-soft: #f2dfcd;
+  /* Same hue lifted for use on the dark forest panels. The sage it replaces
+     there was 3.3:1 — under AA for text that size; this is 5.5:1. */
+  --color-honey-light: #eab963;
+
+  /* Text */
+  --color-body: #4a4a42;
+  --color-muted: #6b6b60;
+
+  /* Lines */
+  --color-line: #e2dfd2;
+  --color-line-soft: #ece8db;
+
+  /* Semantic */
+  --color-success: #2f7d32;
+  --color-warning: #b26a00;
+  --color-danger: #b3261e;
+  --color-info: #2a6f97;
+
+  /* Type */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Shape */
+  --radius-card: 14px;
+
+  /* Elevation.
+
+     Tinted with the forest green rather than neutral black. A grey shadow on a
+     cream page reads as dirt on the paper; a shadow carrying a little of the
+     dominant hue reads as light. Two layers each — a tight contact shadow to
+     seat the element, a wide soft one for the ambient falloff.
+
+     The inset white line along the top edge is what sells a card as a sheet
+     rather than a rectangle: a lit surface catches the light on its top edge,
+     and one pixel of it does the whole job. */
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 1px 2px rgba(46, 74, 28, 0.05),
+    0 4px 14px -4px rgba(46, 74, 28, 0.08);
+  --shadow-lift:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 2px 4px rgba(46, 74, 28, 0.06),
+    0 14px 32px -8px rgba(46, 74, 28, 0.16);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    /* Safe area for iOS bottom nav in the portal */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* The ambient field.
+
+     A flat fill has no light in it: every part of the page is equally bright,
+     so nothing recedes and nothing comes forward, and a long page reads as a
+     document rather than as a place. This lays four very low-contrast pools of
+     the brand colours across the viewport — warm honey high on the left, sage
+     down the right, a forest sink at the foot, one whisper of clay — which
+     gives the cream somewhere to fall off to and keeps the warm/cool balance
+     moving as you scroll.
+
+     It is a fixed pseudo-element rather than `background-attachment: fixed`,
+     which stutters badly on iOS, and it sits at z-index -1 so it paints over
+     the body fill and under everything else. Nothing here is strong enough to
+     touch text contrast — the whole field spans about four points of
+     lightness. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        1200px 820px at 6% -6%,
+        rgba(217, 155, 60, 0.15),
+        transparent 62%
+      ),
+      radial-gradient(
+        1050px 720px at 101% 6%,
+        rgba(123, 160, 91, 0.2),
+        transparent 64%
+      ),
+      radial-gradient(
+        760px 520px at 88% 58%,
+        rgba(169, 82, 31, 0.07),
+        transparent 60%
+      ),
+      radial-gradient(
+        1000px 900px at 46% 108%,
+        rgba(46, 74, 28, 0.12),
+        transparent 62%
+      );
+  }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--color-forest);
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+
+    /* Fraunces is loaded with its SOFT and WONK axes (see app/layout.tsx) but
+       nothing was driving them, so we were paying for a variable font and
+       rendering its default instance. SOFT rounds the terminals, which takes
+       the institutional edge off a very dark green serif; opsz lets the face
+       thin its hairlines as headings get larger instead of going blotchy. */
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 28;
+
+    /* Stops the one-word last line. The hero was breaking as
+       "Your estate, / managed in the / open". */
+    text-wrap: balance;
+  }
+
+  /* WONK swaps in the angled, slightly off-kilter alternates. Lovely at poster
+     size, distracting at subhead size, so it is bound to the display sizes
+     only. */
+  .font-display {
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 28;
+  }
+
+  /* Compound selectors listed so these beat the .font-display rule above,
+     which most headings also carry. */
+  h1,
+  h1.font-display {
+    font-variation-settings: "SOFT" 28, "WONK" 1;
+    letter-spacing: -0.022em;
+  }
+
+  p {
+    /* Never leave a widow on its own line. */
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: var(--color-clay-soft);
+    color: var(--color-forest);
+  }
+
+  /* Inputs must be >=16px on mobile or iOS Safari zooms on focus.
+     Jinto is entering data one-handed in an estate; this matters. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-moss);
+    outline-offset: 2px;
+  }
+}
+
+/* Scroll-reveal sections start hidden and are shown by an IntersectionObserver.
+   Without JavaScript that observer never runs, so force them visible rather
+   than leaving the page blank. */
+@media (scripting: none) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* The mascot idle loop and cursor-follow must stop for users who ask for
+   reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Fine paper grain over the whole page. Keeps the large flat cream areas from
+   looking like untouched default styling. Very low opacity on purpose. */
+@utility grain {
+  position: relative;
+  &::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+}
+
+/* A hairline that fades out at both ends instead of running edge to edge. Hard
+   1px rules across a full-bleed section chop the page into stacked boxes; a
+   rule that dissolves at the margins separates without boxing. */
+@utility hairline {
+  border: 0;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-line) 12%,
+    var(--color-line) 88%,
+    transparent
+  );
+}
+
+/* Warm light bleeding in from one corner. Large flat areas of a single hue go
+   dead in the middle; a very low-contrast wash gives the surface somewhere to
+   fall off to, and the warmth counterweights all the green. */
+@utility glow-warm {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        70% 55% at 12% 0%,
+        rgba(217, 155, 60, 0.13),
+        transparent 62%
+      ),
+      radial-gradient(
+        55% 50% at 95% 12%,
+        rgba(123, 160, 91, 0.16),
+        transparent 60%
+      );
+  }
+}
+
+/* Hill contours, for the wide colour bands. The gradient field gives the page
+   light; this gives it a surface. Kept at a few percent — it should register as
+   texture, never as a pattern you can name at a glance. */
+@utility contoured {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.12;
+    background-image: url("/contours.svg");
+    background-size: 1200px 600px;
+    /* Fades out at the foot so the band does not end on a hard pattern edge. */
+    mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%);
+  }
+}
+
+/* An oversized cardamom leaf bled off one corner. For the dark forest panels
+   and the footer, where a flat block of colour is the most inert thing on the
+   page. */
+@utility leaf-mark {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    right: -90px;
+    bottom: -120px;
+    width: 700px;
+    height: 360px;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.09;
+    background-image: url("/leaf-mark.svg");
+    background-repeat: no-repeat;
+    background-size: contain;
+    transform: rotate(-14deg);
+  }
+}
+
+/* Section washes, to replace the flat cream-deep blocks. Two directions so
+   consecutive bands can alternate temperature instead of repeating one tone. */
+@utility wash-warm {
+  background-image: linear-gradient(
+    170deg,
+    rgba(217, 155, 60, 0.1),
+    rgba(246, 243, 233, 0) 46%,
+    rgba(169, 82, 31, 0.05)
+  );
+}
+
+@utility wash-cool {
+  background-image: linear-gradient(
+    170deg,
+    rgba(123, 160, 91, 0.16),
+    rgba(246, 243, 233, 0) 52%,
+    rgba(46, 74, 28, 0.07)
+  );
+}
+
+/* ---------------------------------------------------------------------------
+   Glass
+
+   Frosted panels only work where something is moving behind them. On a flat
+   cream section a blurred panel has nothing to refract and just reads as a grey
+   box, so these are used in four places and no others: the sticky header, the
+   chips laid over the hero artwork, the portal's bottom bar with content
+   scrolling under it, and the dark forest panel.
+
+   The saturate() is the part people leave out. Blurring alone washes the colour
+   out of what is behind and the panel goes flat and dead; pushing saturation
+   back up is what makes it read as glass rather than as fog.
+
+   Both the no-backdrop-filter fallback and prefers-reduced-transparency drop to
+   an opaque fill — a translucent panel with no blur behind it is unreadable,
+   which is the usual way this effect breaks.
+--------------------------------------------------------------------------- */
+
+@utility glass {
+  background-color: rgba(255, 253, 246, 0.62);
+  backdrop-filter: blur(14px) saturate(1.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    0 6px 22px -8px rgba(46, 74, 28, 0.18);
+}
+
+@utility glass-dark {
+  background-color: rgba(246, 243, 233, 0.09);
+  backdrop-filter: blur(14px) saturate(1.35);
+  -webkit-backdrop-filter: blur(14px) saturate(1.35);
+  border: 1px solid rgba(246, 243, 233, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: rgba(255, 253, 246, 0.95);
+  }
+  .glass-dark {
+    background-color: rgba(38, 60, 24, 0.9);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background-color: var(--color-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .glass-dark {
+    background-color: #263c18;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* A light sweep across a button on hover. One pass, no loop — it should read as
+   the surface catching the light as the pointer crosses it, not as an animation
+   running on the page. */
+@utility sheen {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.3) 50%,
+      transparent 62%
+    );
+    transform: translateX(-115%);
+    transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &:hover::after,
+  &:focus-visible::after {
+    transform: translateX(115%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheen::after {
+    display: none;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(1.012) translateY(-4px);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-breathe {
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+
+/* ---------------------------------------------------------------------------
+   Scroll-driven animation
+
+   The values below are driven from JavaScript, but only as a clock: a single
+   rAF loop writes --p on a handful of containers and every animation here is a
+   pure CSS expression over it. That keeps scrubbing exactly reversible and
+   keeps React out of the frame loop entirely.
+--------------------------------------------------------------------------- */
+
+@property --p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --i {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --n {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+/* Word-by-word headline reveal, scrubbed rather than triggered. */
+.scrub-text {
+  --p: 0;
+}
+
+.scrub-word-outer {
+  display: inline-block;
+}
+
+.scrub-word {
+  display: inline-block;
+}
+
+/* Only once JavaScript has actually written --p at least once. Before that the
+   words style as ordinary text, so the headline is never invisible to a
+   crawler, to a visitor with scripting off, or in a tab that has not yet
+   painted a frame. */
+.scrub-text[data-scroll-var] .scrub-word {
+  /* Each word starts a little later than the one before it. Dividing the lead
+     by the word count means a two-word line and a twenty-word paragraph both
+     finish within the same stretch of scroll. */
+  --lead: calc(var(--i) / var(--n) * 0.55);
+  --t: clamp(0, calc((var(--p) - var(--lead)) * 4), 1);
+
+  opacity: var(--t);
+  transform: translateY(calc((1 - var(--t)) * 0.55em))
+    rotate(calc((1 - var(--t)) * -2.5deg));
+  will-change: transform, opacity;
+}
+
+/* Native scroll timeline where it exists — this runs off the main thread. */
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    transform: scaleX(0);
+    transform-origin: left center;
+    animation: progress-grow linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes progress-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Pointer-tracked 3D tilt with a light sweep that follows the cursor. */
+.tilt-card {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --glare-x: 50%;
+  --glare-y: 50%;
+
+  position: relative;
+  transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transform-style: preserve-3d;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tilt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 320ms ease;
+  background: radial-gradient(
+    240px circle at var(--glare-x) var(--glare-y),
+    rgba(255, 255, 255, 0.5),
+    transparent 62%
+  );
+}
+
+.tilt-card:hover::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card {
+    transform: none;
+  }
+  .tilt-card::after {
+    display: none;
+  }
+  .scrub-text[data-scroll-var] .scrub-word {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Fade a horizontal strip out at both edges, so a marquee or rail reads as
+   continuing past the viewport rather than being cut off. */
+@utility fade-edges-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 6%,
+    black 94%,
+    transparent
+  );
+}

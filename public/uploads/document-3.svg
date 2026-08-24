@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1040" width="800" height="1040" role="img" aria-label="Specimen document">
+<defs>
+    <filter id="sheet" x="-10%" y="-6%" width="120%" height="112%">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#2e4a1c" flood-opacity="0.13"/>
+    </filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+  </defs>
+<rect width="800" height="1040" fill="#eae6d8"/>
+<rect x="26" y="20" width="748" height="1000" rx="3" fill="#ffffff" filter="url(#sheet)"/>
+<g transform="translate(400 520) rotate(-32)" opacity="0.085">
+    <text x="0" y="0" font-family="Georgia, 'Times New Roman', serif" font-size="82" fill="#2e4a1c" font-weight="700" text-anchor="middle" letter-spacing="3">SPECIMEN</text>
+    <text x="0" y="44" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="19" fill="#2e4a1c" text-anchor="middle" letter-spacing="2">not a valid document</text>
+  </g>
+
+  <g>
+    <circle cx="91" cy="86" r="17" fill="#2e4a1c"/>
+    <text x="91" y="92" font-family="Georgia, 'Times New Roman', serif" font-size="18" fill="#f6f3e9" text-anchor="middle">A</text>
+    <text x="118" y="84" font-family="Georgia, 'Times New Roman', serif" font-size="19" fill="#2e4a1c" letter-spacing="1.6">AELA</text>
+    <text x="118" y="101" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" fill="#7a7a6e">Cardamom estate management · Idukki, Kerala</text>
+    <text x="726" y="80" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9" fill="#7a7a6e" font-weight="600" text-anchor="end" letter-spacing="1.4">REGISTRATION COPY</text>
+    <text x="726" y="100" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#1f2a16" text-anchor="end">Reg. no. XXXX/XXXX/0000</text>
+  </g>
+  <line x1="74" y1="124" x2="726" y2="124" stroke="#ddd9c9" stroke-width="1"/>
+<text x="400" y="214" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#2e4a1c" text-anchor="middle">Certificate of Registration</text>
+<text x="400" y="242" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="10" fill="#a9521f" font-weight="600" text-anchor="middle" letter-spacing="2">SPECIMEN COPY — ISSUED BY NO AUTHORITY</text>
+<line x1="194" y1="276" x2="606" y2="276" stroke="#c9c4b2" stroke-width="1"/>
+<text x="400" y="322" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#4a4a42" text-anchor="middle">This specimen records that the holder named below is</text>
+<text x="400" y="344" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#4a4a42" text-anchor="middle">registered as a dealer in cardamom.</text>
+<rect x="74" y="392" width="652" height="196" rx="5" fill="#2e4a1c" opacity="0.04"/>
+<text x="102" y="432" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">REGISTERED HOLDER</text><text x="102" y="451" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">AELA</text>
+<text x="102" y="500" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">ADDRESS</text><text x="102" y="519" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">Vandanmedu, Idukki, Kerala</text>
+<text x="430" y="432" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">CATEGORY</text><text x="430" y="451" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">Dealer — spices</text>
+<text x="430" y="500" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">REGISTRATION NO.</text><text x="430" y="519" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">XXXX/XXXX/0000</text>
+<text x="74" y="654" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">VALID FROM</text><text x="74" y="673" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">— specimen —</text>
+<text x="330" y="654" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">VALID TO</text><text x="330" y="673" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">— specimen —</text>
+<text x="560" y="654" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="8.5" fill="#7a7a6e" font-weight="600" letter-spacing="1.2">ISSUED AT</text><text x="560" y="673" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12.5" fill="#1f2a16">— specimen —</text>
+<line x1="74" y1="716" x2="726" y2="716" stroke="#ddd9c9" stroke-width="1"/>
+<text x="74" y="750" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#7a7a6e">This document is a sample rendered for a demonstration system.</text>
+<text x="74" y="772" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="11" fill="#7a7a6e">It carries no seal, no signature and no legal effect.</text>
+<text x="726" y="830" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9" fill="#7a7a6e" font-weight="600" text-anchor="end" letter-spacing="1.2">For the registering authority</text>
+<line x1="506" y1="866" x2="726" y2="866" stroke="#c9c4b2" stroke-width="1"/>
+<text x="726" y="884" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9.5" fill="#7a7a6e" text-anchor="end">Unsigned specimen</text>
+<line x1="74" y1="944" x2="726" y2="944" stroke="#ddd9c9" stroke-width="1"/>
+  <text x="74" y="966" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9" fill="#7a7a6e">Spice-Board-registration.pdf</text>
+  <text x="726" y="966" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="9" fill="#7a7a6e" text-anchor="end">Sample document — generated for demonstration</text>
+<rect x="26" y="20" width="748" height="1000" rx="3" fill="none" stroke="#ddd9c9" stroke-width="1"/>
+<rect width="800" height="1040" filter="url(#grain)" opacity="0.035"/>
+</svg>

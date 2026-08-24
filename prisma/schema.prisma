@@ -1,0 +1,362 @@
+// Cardamom Client Management Portal + Store
+// Demo schema. SQLite for zero-setup local running.
+//
+// Migrating to PostgreSQL (Neon) later: change provider to "postgresql".
+// String status/type fields are deliberate (SQLite has no enums, and it lets
+// the admin add activity types without a code change). On Postgres they can
+// stay strings or become enums.
+//
+// NOTE: money is Float (rupees) for demo simplicity. For production, store
+// paise as Int to avoid floating-point rounding on order totals.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & people
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String
+  email              String    @unique
+  phone              String?
+  passwordHash       String
+  role               String // ADMIN | CLIENT
+  mustChangePassword Boolean   @default(true)
+  isActive           Boolean   @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // A CLIENT user belongs to exactly one client. ADMIN has none.
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  activitiesCreated Activity[] @relation("ActivityAuthor")
+  messagesSent      Message[]
+  auditLogs         AuditLog[]
+
+  @@index([clientId])
+  @@index([role])
+}
+
+/// A grower whose estate(s) Jinto manages.
+model Client {
+  id        String   @id @default(cuid())
+  code      String   @unique // e.g. CLT-001, shown in the UI
+  name      String
+  phone     String?
+  whatsapp  String?
+  email     String?
+  address   String?
+  village   String?
+  district  String?  @default("Idukki")
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  plots       Plot[]
+  activities  Activity[]
+  workers     Worker[]
+  attachments Attachment[]
+  messages    Message[]
+
+  @@index([isActive])
+}
+
+/// One estate / plot. A client can have several.
+model Plot {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String
+  location  String?
+  areaAcres Float?
+  plants    Int? // number of cardamom plants
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities  Activity[]
+  workers     Worker[]
+  attachments Attachment[]
+
+  @@index([clientId])
+}
+
+/// Estate labour. Jinto keeps records of who works on which estate.
+model Worker {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plotId    String?
+  plot      Plot?    @relation(fields: [plotId], references: [id], onDelete: SetNull)
+  name      String
+  phone     String?
+  role      String? // Supervisor, Harvester, Sprayer, General
+  dailyWage Float?
+  joinedOn  DateTime?
+  idNumber  String? // Aadhaar last 4 / employee ref, optional
+  address   String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activityWorkers ActivityWorker[]
+
+  @@index([clientId])
+  @@index([plotId])
+}
+
+// ---------------------------------------------------------------------------
+// Estate operations — the heart of the portal
+// ---------------------------------------------------------------------------
+
+/// Types are seeded rows, not a hardcoded enum, so new ones can be added
+/// from the admin without a deploy.
+model ActivityType {
+  id        String  @id @default(cuid())
+  key       String  @unique // FERTILIZER, SPRAYING, HARVEST...
+  label     String
+  icon      String? // lucide icon name
+  color     String? // token name for the badge
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+}
+
+/// One dated piece of work done on a client's estate, with proof attached.
+model Activity {
+  id       String  @id @default(cuid())
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plotId   String?
+  plot     Plot?   @relation(fields: [plotId], references: [id], onDelete: SetNull)
+
+  date  DateTime
+  type  String // matches ActivityType.key
+  title String
+  notes String?
+
+  // Labour
+  labourCount Int?
+  labourCost  Float?
+
+  // Costs — visible to the client
+  materialCost Float?
+  otherCost    Float?
+  totalCost    Float  @default(0)
+
+  // Harvest-only fields (null for other types)
+  greenWeightKg Float?
+  driedWeightKg Float?
+  grade         String? // AGEB, AGB, AGS, 8mm, 7mm...
+  ratePerKg     Float?
+  saleAmount    Float?
+
+  weather String? // handy field note
+
+  createdById String
+  createdBy   User   @relation("ActivityAuthor", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  materials   Material[]
+  attachments Attachment[]
+  workers     ActivityWorker[]
+
+  @@index([clientId, date])
+  @@index([plotId])
+  @@index([type])
+}
+
+/// Fertilizer / pesticide / other input applied during an activity.
+model Material {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  name       String // Factomphos, Urea, Quinalphos...
+  category   String // FERTILIZER | PESTICIDE | FUNGICIDE | GROWTH | OTHER
+  quantity   Float
+  unit       String // kg, g, L, ml
+  cost       Float?
+  notes      String?
+
+  @@index([activityId])
+}
+
+model ActivityWorker {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  workerId   String
+  worker     Worker   @relation(fields: [workerId], references: [id], onDelete: Cascade)
+  days       Float    @default(1)
+  wage       Float?
+
+  @@unique([activityId, workerId])
+  @@index([workerId])
+}
+
+/// Photos, videos and documents. clientId is always set so ownership checks
+/// never have to walk a relation.
+model Attachment {
+  id         String    @id @default(cuid())
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  plotId     String?
+  plot       Plot?     @relation(fields: [plotId], references: [id], onDelete: SetNull)
+
+  kind      String // IMAGE | VIDEO | DOCUMENT
+  url       String
+  filename  String
+  mimeType  String?
+  sizeBytes Int?
+  caption   String?
+  category  String? // for documents: LAB_REPORT, INVOICE, LICENCE, OTHER
+  createdAt DateTime @default(now())
+
+  @@index([clientId, kind])
+  @@index([activityId])
+}
+
+model Message {
+  id           String    @id @default(cuid())
+  clientId     String
+  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  senderUserId String
+  sender       User      @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+  body         String
+  readAt       DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([clientId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String // LOGIN, CREATE_ACTIVITY, RESET_PASSWORD...
+  entity    String?
+  entityId  String?
+  meta      String? // JSON string
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Store — Jinto's own cardamom, sold to the public. No customer accounts.
+// ---------------------------------------------------------------------------
+
+model Product {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  shortDescription String?
+  description      String?
+  grade            String?
+  origin           String?  @default("Idukki, Kerala")
+  isActive         Boolean  @default(true)
+  isFeatured       Boolean  @default(false)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  variants ProductVariant[]
+  images   ProductImage[]
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label       String // "250 g"
+  weightGrams Int
+  price       Float
+  compareAt   Float? // struck-through price
+  stock       Int      @default(0)
+  sku         String?  @unique
+  sortOrder   Int      @default(0)
+
+  orderItems OrderItem[]
+
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+/// Guest checkout — no customer account, looked up by order number + email.
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  customerName String
+  email        String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  notes        String?
+
+  subtotal    Float
+  shippingFee Float @default(0)
+  total       Float
+
+  status        String  @default("PENDING") // PENDING|CONFIRMED|PACKED|SHIPPED|DELIVERED|CANCELLED
+  paymentStatus String  @default("PENDING") // PENDING|PAID|FAILED|REFUNDED
+  paymentRef    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model OrderItem {
+  id           String          @id @default(cuid())
+  orderId      String
+  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId    String?
+  variant      ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  productName  String
+  variantLabel String
+  unitPrice    Float
+  quantity     Int
+  lineTotal    Float
+
+  @@index([orderId])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
