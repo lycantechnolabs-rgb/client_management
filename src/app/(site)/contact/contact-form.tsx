@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Send } from "lucide-react";
+import { useActionState } from "react";
+import { CheckCircle2, Loader2, Send } from "lucide-react";
 import {
   Button,
   Card,
@@ -11,33 +11,48 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
+import { ConsentNotice } from "@/components/consent-notice";
+import { sendEnquiry } from "./actions";
 
 /**
- * Demo only — this does not send anything yet. Wiring it up needs a decision
- * on where enquiries should land (email, or a table in the admin), which is
- * still open.
+ * Enquiries land in the admin rather than an inbox — there is no mail
+ * infrastructure yet, and storing one Jinto can answer beats the previous
+ * behaviour, which reported success and dropped the message.
  */
-export function ContactForm() {
-  const [sent, setSent] = useState(false);
+export function ContactForm({
+  phone,
+  phoneDisplay,
+  firstName,
+}: {
+  /* Passed in rather than imported: these are editable in the admin now, and a
+     client component cannot read them. See src/lib/site-content.ts. */
+  phone: string;
+  phoneDisplay: string;
+  firstName: string;
+}) {
+  const [state, action, pending] = useActionState(sendEnquiry, {});
 
-  if (sent) {
+  if (state.reference) {
     return (
       <Card>
         <CardBody className="py-14 text-center">
           <CheckCircle2 className="mx-auto size-12 text-success" />
           <h2 className="mt-4 font-display text-2xl text-forest">Thank you!</h2>
           <p className="mt-2 text-sm text-body">
-            Your message has been sent successfully. We&rsquo;ll get back to you
-            within a day.
+            We have your message and will come back to you within a day. Your
+            reference is{" "}
+            <strong className="font-mono text-forest">{state.reference}</strong>.
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-6"
-            onClick={() => setSent(false)}
-          >
-            Send another
-          </Button>
+          <p className="mt-2 text-xs text-muted">
+            In a hurry? Ring {firstName} on{" "}
+            <a
+              href={`tel:${phone}`}
+              className="underline hover:text-forest"
+            >
+              {phoneDisplay}
+            </a>
+            .
+          </p>
         </CardBody>
       </Card>
     );
@@ -46,13 +61,7 @@ export function ContactForm() {
   return (
     <Card>
       <CardBody>
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSent(true);
-          }}
-        >
+        <form action={action} className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Your name">
               <Input name="name" autoComplete="name" required />
@@ -85,13 +94,25 @@ export function ContactForm() {
             <Textarea name="message" rows={5} required />
           </Field>
 
-          <Button type="submit" size="lg" className="w-full">
-            <Send className="size-4" /> Send message
-          </Button>
+          <ConsentNotice purposeKey="ENQUIRY" />
 
-          <p className="text-center text-xs text-muted">
-            Demo form — not yet connected to email.
-          </p>
+          {state.error ? (
+            <p
+              role="alert"
+              className="rounded-lg bg-danger/8 px-3 py-2 text-sm text-danger"
+            >
+              {state.error}
+            </p>
+          ) : null}
+
+          <Button type="submit" size="lg" className="w-full" disabled={pending}>
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
+            Send message
+          </Button>
         </form>
       </CardBody>
     </Card>

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui";
 import { FREE_SHIPPING_ABOVE, SHIPPING_FLAT_RATE } from "@/lib/constants";
 import { money } from "@/lib/utils";
+import { ConsentNotice } from "@/components/consent-notice";
 import { placeOrder, type CheckoutState } from "./actions";
 
 export default function CheckoutPage() {
@@ -217,6 +218,8 @@ export default function CheckoutPage() {
                     {money(total)}
                   </span>
                 </div>
+
+                <ConsentNotice purposeKey="ORDER_FULFILMENT" />
 
                 {state.error ? (
                   <p

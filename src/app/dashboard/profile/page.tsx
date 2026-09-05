@@ -10,10 +10,14 @@ import {
   SectionHeading,
 } from "@/components/ui";
 import { shortDate } from "@/lib/utils";
+import { getContent } from "@/lib/content";
+import { getI18n } from "@/lib/i18n";
 
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
+  const { locale, t } = await getI18n();
+  const c = await getContent();
   const user = await requireClient();
   const client = await db.client.findUnique({
     where: { id: user.clientId },
@@ -27,33 +31,40 @@ export default async function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <Card>
+      <Card variant="glass">
         <CardBody>
-          <SectionHeading title="Your details" />
+          <SectionHeading title={t("profile.title")} />
           <dl className="space-y-3 text-sm">
-            <Row label="Name" value={client.name} />
-            <Row label="Client code" value={client.code} />
-            <Row label="Phone" value={client.phone ?? "—"} />
-            <Row label="Email" value={client.email ?? "—"} />
+            <Row label={t("profile.name")} value={client.name} />
+            <Row label={t("profile.clientCode")} value={client.code} />
+            <Row label={t("profile.phone")} value={client.phone ?? "—"} />
+            <Row label={t("profile.email")} value={client.email ?? "—"} />
             <Row
-              label="Address"
+              label={t("profile.address")}
               value={
                 [client.address, client.village, client.district]
                   .filter(Boolean)
                   .join(", ") || "—"
               }
             />
-            <Row label="With us since" value={shortDate(client.createdAt)} />
+            <Row label={t("profile.withUsSince")} value={shortDate(client.createdAt, locale)} />
           </dl>
           <p className="mt-4 text-xs text-muted">
-            To change any of these, message Jinto and he&rsquo;ll update them.
+            {t("profile.changeYourselfIn")}{" "}
+            <Link
+              href="/dashboard/settings"
+              className="underline hover:text-forest"
+            >
+              {t("profile.settingsLink")}
+            </Link>
+            {t("profile.messageJintoForRest")}
           </p>
         </CardBody>
       </Card>
 
-      <Card>
+      <Card variant="glass">
         <CardBody>
-          <SectionHeading title={`Estates (${client.plots.length})`} />
+          <SectionHeading title={`${t("profile.estates")} (${client.plots.length})`} />
           <ul className="space-y-3">
             {client.plots.map((p) => (
               <li key={p.id} className="text-sm">
@@ -74,9 +85,9 @@ export default async function ProfilePage() {
       </Card>
 
       {client.workers.length > 0 ? (
-        <Card>
+        <Card variant="glass">
           <CardBody>
-            <SectionHeading title={`Workers (${client.workers.length})`} />
+            <SectionHeading title={`${t("profile.workers")} (${client.workers.length})`} />
             <ul className="divide-y divide-line-soft">
               {client.workers.map((w) => (
                 <li
@@ -92,7 +103,7 @@ export default async function ProfilePage() {
                   {w.phone ? (
                     <a
                       href={`tel:${w.phone}`}
-                      className="shrink-0 text-xs text-moss hover:underline"
+                      className="inline-flex min-h-11 shrink-0 items-center text-xs text-moss hover:underline"
                     >
                       {w.phone}
                     </a>
@@ -104,15 +115,15 @@ export default async function ProfilePage() {
         </Card>
       ) : null}
 
-      <Card>
+      <Card variant="glass">
         <CardBody className="space-y-3">
-          <SectionHeading title="Get in touch" />
+          <SectionHeading title={t("profile.getInTouch")} />
           <div className="flex flex-wrap gap-2">
-            <ButtonLink href="tel:8590657900" variant="outline">
+            <ButtonLink href={`tel:${c.contact_phone}`} variant="outline">
               <Phone className="size-4" /> Call Jinto
             </ButtonLink>
             <ButtonLink
-              href="https://wa.me/918590657900"
+              href={`https://wa.me/${c.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
               variant="outline"
@@ -123,7 +134,7 @@ export default async function ProfilePage() {
           <Divider className="my-1" />
           <Link
             href="/api/signout"
-            className="inline-flex items-center gap-2 text-sm text-danger hover:underline"
+            className="inline-flex min-h-11 items-center gap-2 text-sm text-danger hover:underline"
           >
             <LogOut className="size-4" /> Sign out
           </Link>

@@ -8,20 +8,23 @@ import {
   EmptyState,
   StatTile,
 } from "@/components/ui";
-import { activityLabel } from "@/lib/constants";
 import { dayMonth, money, monthLabel } from "@/lib/utils";
+import { getI18n } from "@/lib/i18n";
+import { activityLabelIn } from "@/lib/i18n/labels";
 
 export const metadata = { title: "Money" };
 
 export default async function ExpensesPage() {
+  const { locale, t } = await getI18n();
   const user = await requireClient();
   const months = await getSpendByMonth(user.clientId);
 
   if (months.length === 0) {
     return (
       <EmptyState
-        title="No spending recorded yet"
+        title={t("money.noneYet")}
         description="Everything spent on your estate will be itemised here, month by month."
+        variant="glass"
       />
     );
   }
@@ -35,25 +38,26 @@ export default async function ExpensesPage() {
   return (
     <div className="space-y-7">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile tone="forest" label="Total spent" value={money(totalSpend)} />
-        <StatTile label="Labour" value={money(totalLabour)} />
-        <StatTile label="Inputs & materials" value={money(totalMaterial)} />
+        <StatTile tone="forest" label={t("money.totalSpent")} value={money(totalSpend)} />
+        <StatTile tone="glass" label={t("money.labour")} value={money(totalLabour)} />
+        <StatTile tone="glass" label={t("money.inputsAndMaterials")} value={money(totalMaterial)} />
         <StatTile
-          label="Sale value"
+          tone="glass"
+          label={t("money.income")}
           value={money(totalIncome)}
-          sub="from harvests"
+          sub={t("money.fromHarvests")}
         />
       </div>
 
       <section>
-        <h2 className="mb-3 font-display text-lg text-forest">Month by month</h2>
+        <h2 className="mb-3 font-display text-lg text-forest">{t("money.monthByMonth")}</h2>
         <div className="space-y-4">
           {months.map((m) => (
-            <Card key={m.key}>
+            <Card key={m.key} variant="glass">
               <CardBody>
                 <div className="flex items-baseline justify-between gap-3">
                   <h3 className="font-display text-base text-forest">
-                    {monthLabel(m.date)}
+                    {monthLabel(m.date, locale)}
                   </h3>
                   <span className="font-display text-lg text-forest">
                     {money(m.total)}
@@ -82,10 +86,10 @@ export default async function ExpensesPage() {
                 </div>
 
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                  <Legend color="bg-forest" label="Labour" value={money(m.labour)} />
-                  <Legend color="bg-moss" label="Materials" value={money(m.material)} />
+                  <Legend color="bg-forest" label={t("money.labour")} value={money(m.labour)} />
+                  <Legend color="bg-moss" label={t("money.materials")} value={money(m.material)} />
                   {m.other > 0 ? (
-                    <Legend color="bg-sage" label="Other" value={money(m.other)} />
+                    <Legend color="bg-sage" label={t("money.other")} value={money(m.other)} />
                   ) : null}
                   {m.income > 0 ? (
                     <span className="ms-auto font-medium text-success">
@@ -101,15 +105,15 @@ export default async function ExpensesPage() {
                     <li key={item.id}>
                       <Link
                         href={`/dashboard/activities/${item.id}`}
-                        className="flex items-baseline justify-between gap-3 text-sm hover:text-forest"
+                        className="flex min-h-11 items-baseline justify-between gap-3 py-1 text-sm hover:text-forest"
                       >
                         <span className="min-w-0">
                           <span className="text-muted">
-                            {dayMonth(item.date)}
+                            {dayMonth(item.date, locale)}
                           </span>{" "}
                           <span className="text-body">{item.title}</span>
                           <span className="ms-1.5 text-xs text-muted">
-                            {activityLabel(item.type)}
+                            {activityLabelIn(t, item.type)}
                           </span>
                         </span>
                         <span className="shrink-0 text-body">

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -66,9 +66,54 @@ export async function readStoredFile(storageKey: string) {
 }
 
 /**
+ * Remove the bytes behind an attachment.
+ *
+ * Goes through resolveStoredPath like every other reader, so a malformed or
+ * traversing key deletes nothing rather than something it should not.
+ *
+ * A missing file is treated as success: the caller has already removed the row
+ * that pointed here, and failing the whole operation because the bytes were
+ * gone already would leave the database and the disk disagreeing in the more
+ * confusing direction — a row for a file nobody can read.
+ */
+export async function deleteStoredFile(storageKey: string | null) {
+  if (!storageKey) return;
+  const full = resolveStoredPath(storageKey);
+  if (!full) return;
+  try {
+    await unlink(full);
+  } catch {
+    // already gone
+  }
+}
+
+/**
  * Where the browser should fetch this attachment from. Privately stored files
  * go through the authorizing route; older rows keep their public path.
  */
 export function attachmentHref(a: { id: string; storageKey?: string | null; url: string }) {
   return a.storageKey ? `/api/files/${a.id}` : a.url;
+}
+
+/**
+ * Where to fetch a *small* copy of a photograph.
+ *
+ * Only for privately stored images: an older row with a public `url` is served
+ * as it always was, and anything that is not a photograph has no thumbnail.
+ * Returns null when there is none, so the caller falls back to the original
+ * rather than requesting a URL that will 404.
+ */
+export function thumbnailHref(
+  a: {
+    id: string;
+    storageKey?: string | null;
+    kind?: string | null;
+    mimeType?: string | null;
+  },
+  width: number,
+) {
+  if (!a.storageKey || a.kind !== "IMAGE") return null;
+  // SVG is not resized — see src/lib/thumbnails.ts — so asking would 404.
+  if (a.mimeType === "image/svg+xml") return null;
+  return `/api/thumb/${a.id}?w=${width}`;
 }

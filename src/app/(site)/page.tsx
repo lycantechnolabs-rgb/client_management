@@ -26,9 +26,10 @@ import {
   StickyStack,
   TiltCard,
 } from "@/components/scroll";
-import { HeroPods, PodJourney } from "@/components/three";
+import { PodJourney } from "@/components/three";
 import { CardamomYear, ToldVsSeen } from "@/components/showcase";
 import { money } from "@/lib/utils";
+import { getContent } from "@/lib/content";
 
 const SERVICES = [
   {
@@ -98,6 +99,8 @@ const BAND = [
 ];
 
 export default async function HomePage() {
+  const c = await getContent();
+
   // Real figures, aggregated across all estates. Nothing here identifies a
   // grower — individual records stay behind the login.
   const [plotCount, visitCount, photoCount, cured] = await Promise.all([
@@ -120,7 +123,7 @@ export default async function HomePage() {
   return (
     <>
       {/* ------------------------------------------------------------------ */}
-      {/* Hero — 3D pods drift behind the type and clear away as you scroll   */}
+      {/* Hero — the estate photo, framed and scrimmed for the type          */}
       {/* ------------------------------------------------------------------ */}
       <section className="px-3 pt-3 sm:px-4 sm:pt-4">
         <div className="glow-warm relative mx-auto max-w-[1400px] overflow-hidden rounded-[22px] border border-line/50 shadow-card sm:rounded-[28px]">
@@ -145,35 +148,22 @@ export default async function HomePage() {
             className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-cream/25 via-cream/80 to-cream/92 lg:bg-gradient-to-r lg:from-cream lg:via-cream/70 lg:to-transparent"
           />
 
-          {/* The WebGL layer is additive: if it never loads, the hero below is
-              exactly the hero we had before.
-
-              Hidden below lg. With the mascot gone the hero is a single column,
-              so on a phone these drift straight across the headline and the
-              paragraph — the type still wins on z-index, but mid-green pods
-              behind dark green text is not a contrast anyone should have to
-              read. There is a photograph of real pods behind them now anyway. */}
-          <HeroPods className="pointer-events-none absolute inset-0 z-0 hidden lg:block" />
-
           <div className="relative flex min-h-[26rem] flex-col justify-center px-5 pb-16 pt-10 sm:px-8 sm:min-h-[30rem] lg:min-h-[34rem] lg:px-14 lg:pb-24 lg:pt-20">
             <div className="relative z-10 max-w-xl">
               <p className="inline-flex items-center gap-2 rounded-full border border-moss/25 bg-surface/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-moss backdrop-blur-sm sm:text-xs">
                 <Leaf className="size-3.5" />
-                Cardamom estate management · Idukki
+                {c.home_eyebrow}
               </p>
 
               {/* No <br>: the headline is balanced by the browser now (see
                   text-wrap in globals.css), so it breaks evenly at whatever
                   width it gets instead of stranding "open" on its own line. */}
               <h1 className="mt-5 font-display text-[2.5rem] font-semibold leading-[1.03] text-forest sm:text-6xl lg:text-[4.2rem]">
-                Your estate, managed in the open
+                {c.home_headline}
               </h1>
 
               <p className="mt-6 max-w-md text-[15px] leading-relaxed text-body sm:text-base">
-                We run cardamom estates for growers across the Idukki hills — and
-                we show you every day&apos;s work on your phone. Every fertilizer
-                round, every harvest, every rupee. Nothing you have to take on
-                trust.
+                {c.home_intro}
               </p>
 
               <div className="mt-8 flex flex-wrap gap-3">
@@ -246,18 +236,18 @@ export default async function HomePage() {
       {/* ------------------------------------------------------------------ */}
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <Reveal>
-          <div className="overflow-hidden rounded-[--radius-card] border border-line bg-surface shadow-card">
+          <div className="glass overflow-hidden rounded-[--radius-card]">
             {/* Clay rather than moss: a live indicator is the one thing in this
                 block that is not decorative, and against a page of greens the
                 warm dot is what the eye finds first. */}
-            <p className="flex items-center justify-center gap-2 border-b border-line-soft bg-cream-deep/60 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-clay">
+            <p className="flex items-center justify-center gap-2 border-b border-line-soft/60 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-clay">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-clay opacity-60" />
                 <span className="relative inline-flex size-2 rounded-full bg-clay" />
               </span>
               Live from the estates
             </p>
-            <dl className="grid gap-px bg-line sm:grid-cols-4">
+            <dl className="grid gap-px bg-line/60 sm:grid-cols-4">
               {[
                 { v: plotCount, label: "Plots under management" },
                 { v: visitCount, label: "Visits logged and costed" },
@@ -270,7 +260,7 @@ export default async function HomePage() {
               ].map((s) => (
                 <div
                   key={s.label}
-                  className="bg-surface px-5 py-8 text-center transition-colors duration-300 hover:bg-cream-deep/50"
+                  className="px-5 py-8 text-center transition-colors duration-300 hover:bg-white/30"
                 >
                   <dt className="font-display text-4xl text-forest">
                     <Counter to={s.v} suffix={s.suffix ?? ""} />
@@ -352,7 +342,7 @@ export default async function HomePage() {
             key={s.title}
             className="w-[78vw] shrink-0 snap-center rounded-[--radius-card] sm:w-[360px]"
           >
-            <div className="group h-full rounded-[--radius-card] border border-line bg-surface p-7 shadow-card transition-shadow duration-300 hover:shadow-lift">
+            <div className="glass group h-full rounded-[--radius-card] p-7 transition-shadow duration-300 hover:shadow-lift">
               {/* The icon chip warms on hover — the only colour change in the
                   card, so it reads as the card responding rather than as
                   decoration. */}
@@ -542,7 +532,7 @@ export default async function HomePage() {
           {STEPS.map((s) => (
             <article
               key={s.n}
-              className="rounded-[--radius-card] border border-line bg-surface p-8 shadow-[0_18px_40px_-24px_rgba(46,74,28,0.35)] sm:p-10"
+              className="glass rounded-[--radius-card] p-8 sm:p-10"
             >
               <div className="flex items-start gap-5">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-forest font-display text-sm text-cream">
@@ -594,7 +584,7 @@ export default async function HomePage() {
                 <TiltCard className="h-full rounded-[--radius-card]" strength={6}>
                   <Link
                     href={`/store/${p.slug}`}
-                    className="group block h-full overflow-hidden rounded-[--radius-card] border border-line bg-surface"
+                    className="glass group block h-full overflow-hidden rounded-[--radius-card]"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden bg-tint">
                       {p.images[0] ? (
@@ -634,7 +624,7 @@ export default async function HomePage() {
       {/* ------------------------------------------------------------------ */}
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
         <Reveal>
-          <div className="relative overflow-hidden rounded-[--radius-card] border border-line bg-surface px-6 py-14 text-center sm:px-12">
+          <div className="glass relative overflow-hidden rounded-[--radius-card] px-6 py-14 text-center sm:px-12">
             <div
               className="pointer-events-none absolute inset-x-0 -top-20 mx-auto size-64 rounded-full bg-tint blur-3xl"
               aria-hidden="true"

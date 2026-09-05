@@ -29,6 +29,10 @@ model User {
   phone              String?
   passwordHash       String
   role               String // ADMIN | CLIENT
+  /// Reading language: "en" or "ml". Kept on the account rather than only in a
+  /// cookie, because a grower who reads only Malayalam should not be dropped
+  /// back into English by a cleared browser or a second phone.
+  locale             String    @default("en")
   mustChangePassword Boolean   @default(true)
   isActive           Boolean   @default(true)
   lastLoginAt        DateTime?
@@ -42,6 +46,11 @@ model User {
   activitiesCreated Activity[] @relation("ActivityAuthor")
   messagesSent      Message[]
   auditLogs         AuditLog[]
+  permissionsSet    ClientPermission[]
+  attachmentsAdded  Attachment[]       @relation("AttachmentUploader")
+  enquiriesHandled  Enquiry[]          @relation("EnquiryHandler")
+  notifications     Notification[]     @relation("NotificationRecipient")
+  uploadTickets     UploadTicket[]     @relation("UploadTicketIssuer")
 
   @@index([clientId])
   @@index([role])
@@ -60,6 +69,13 @@ model Client {
   district  String?  @default("Idukki")
   notes     String?
   isActive  Boolean  @default(true)
+
+  /// Nomination (DPDP s.14): who may exercise this grower's rights if they die
+  /// or are incapacitated. Set by the grower, never by Jinto.
+  nomineeName     String?
+  nomineePhone    String?
+  nomineeRelation String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -69,6 +85,7 @@ model Client {
   workers     Worker[]
   attachments Attachment[]
   messages    Message[]
+  permissions ClientPermission[]
 
   @@index([isActive])
 }
@@ -88,6 +105,8 @@ model Plot {
   updatedAt DateTime @updatedAt
 
   activities  Activity[]
+  /// Visits that covered this block as an extra rather than as their primary.
+  extraVisits ActivityPlot[]
   workers     Worker[]
   attachments Attachment[]
 
@@ -106,7 +125,9 @@ model Worker {
   role      String? // Supervisor, Harvester, Sprayer, General
   dailyWage Float?
   joinedOn  DateTime?
-  idNumber  String? // Aadhaar last 4 / employee ref, optional
+  // An idNumber field (Aadhaar last 4) was removed here: nothing read it and
+  // nothing wrote it, and holding Aadhaar fragments for no purpose is exactly
+  // what data minimisation forbids. Do not reintroduce it without a purpose.
   address   String?
   notes     String?
   isActive  Boolean  @default(true)
@@ -175,10 +196,91 @@ model Activity {
   materials   Material[]
   attachments Attachment[]
   workers     ActivityWorker[]
+  /// Any *additional* kinds of work done in the same visit. See ActivityKind.
+  extraKinds  ActivityKind[]
+  /// Any *additional* blocks the same visit covered. See ActivityPlot.
+  extraPlots  ActivityPlot[]
+  /// The lots a picking was graded into. See HarvestGrade.
+  grades      HarvestGrade[]
 
   @@index([clientId, date])
   @@index([plotId])
   @@index([type])
+}
+
+/// One graded lot from a picking.
+///
+/// A round is not one grade. A picking is sorted into extra bold, bold and
+/// superior, each with its own dried weight and its own rate — extra bold
+/// fetches noticeably more. Recorded as a single grade with a single weight,
+/// the season's grade breakdown attributes every kilogram to whichever grade
+/// happened to be chosen, and the report is not slightly wrong but wholly so.
+///
+/// Unlike the other extras tables, these carry numbers rather than labels, so
+/// the parent's totals are *derived* from them: `Activity.driedWeightKg` and
+/// `saleAmount` are the sums, and `grade` is the heaviest lot. That keeps every
+/// existing reader working — the dashboards, the season totals, the export —
+/// while the breakdown gets the real figures. harvest-grades.ts is the one
+/// place that computes it.
+model HarvestGrade {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  /// Matches a CARDAMOM_GRADES entry.
+  grade      String
+  driedKg    Float
+  ratePerKg  Float?
+  /// driedKg × ratePerKg, stored so a rate change cannot rewrite a past sale.
+  saleAmount Float?
+
+  @@unique([activityId, grade])
+  @@index([grade])
+}
+
+/// An additional block covered by one visit.
+///
+/// A round rarely stops at a boundary — Jinto sprays the lower block and the
+/// upper one on the same walk. Recorded as one visit against one plot, the
+/// other block's 45-day picking cycle is computed as though nothing happened
+/// there, and the round board shows it overdue the day after it was worked.
+///
+/// Same asymmetric storage as ActivityKind: `Activity.plotId` stays the primary
+/// and every existing reader keeps working; these are the extras; nothing is
+/// stored twice.
+model ActivityPlot {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  plotId     String
+  plot       Plot     @relation(fields: [plotId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, plotId])
+  @@index([plotId])
+}
+
+/// An additional kind of work recorded against one visit.
+///
+/// A round in an estate is rarely one thing — Jinto weeds and applies
+/// fertilizer on the same walk, and forcing that into two entries splits the
+/// costs and the photographs of a single visit across two rows on the grower's
+/// dashboard.
+///
+/// This holds only the *extra* kinds. `Activity.type` remains the primary one
+/// and keeps every existing reader working — the badge, the filters, the
+/// harvest-only fields, the reports. Storing the primary here as well would
+/// mean two places that can disagree about the same fact, and eventually will.
+///
+/// The full set is therefore `[activity.type, ...activity.extraKinds]`, which
+/// activityKinds() in src/lib/activity-kinds.ts is the one place that knows.
+model ActivityKind {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  /// Matches ActivityType.key, same as Activity.type.
+  key        String
+
+  @@unique([activityId, key])
+  @@index([key])
 }
 
 /// Fertilizer / pesticide / other input applied during an activity.
@@ -193,7 +295,28 @@ model Material {
   cost       Float?
   notes      String?
 
+  /// Any *additional* categories. Same split as ActivityKind: `category` is the
+  /// primary and stays what every existing reader expects, these are the extras,
+  /// and nothing is stored twice so nothing can disagree.
+  extraCategories MaterialCategory[]
+
   @@index([activityId])
+}
+
+/// An additional category on one material.
+///
+/// A drench can be both a fungicide and a growth promoter; a lime application is
+/// a soil conditioner that some estates book as fertilizer. Forcing one label
+/// makes the input log and the cost-by-category report quietly wrong.
+model MaterialCategory {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  /// Matches MATERIAL_CATEGORIES key, same as Material.category.
+  key        String
+
+  @@unique([materialId, key])
+  @@index([key])
 }
 
 model ActivityWorker {
@@ -231,10 +354,23 @@ model Attachment {
   sizeBytes Int?
   caption   String?
   category  String? // for documents: LAB_REPORT, INVOICE, LICENCE, OTHER
+
+  /// Who put this here. Null for everything seeded or added before uploads
+  /// existed, which the app reads as "Jinto's".
+  ///
+  /// This is what makes "delete their own uploads" mean anything: without it
+  /// the only question the data could answer is whether a file belongs to a
+  /// grower's account, not whether that grower is the one who added it — and a
+  /// permission to delete your own work would quietly become a permission to
+  /// delete the evidence Jinto recorded.
+  uploadedById String?
+  uploadedBy   User?   @relation("AttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([clientId, kind])
   @@index([activityId])
+  @@index([uploadedById])
 }
 
 model Message {
@@ -360,7 +496,269 @@ model OrderItem {
   @@index([orderId])
 }
 
+/// One string of the portal, in one language, as a person corrected it.
+///
+/// The shipped Malayalam is a machine draft (src/lib/i18n/ml.ts). Jinto reads
+/// Malayalam, so the review happens here rather than in a code change: a row
+/// wins over the draft, and `reviewed` records that a person has actually
+/// looked at the string — a correction and a confirmation both count, an
+/// untouched string counts as neither.
+model Translation {
+  id        String   @id @default(cuid())
+  locale    String // "ml"
+  key       String // matches a key in src/lib/i18n/en.ts
+  value     String
+  reviewed  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, key])
+  @@index([locale])
+}
+
+/// A machine translation of something Jinto wrote, kept so it is paid for once.
+///
+/// Keyed by a hash of the source text and the target language, not by the row
+/// it came from: the same sentence typed on two visits is one translation, and
+/// editing a note changes the hash so the correction is picked up rather than
+/// serving the old text forever.
+///
+/// `source` is kept for the same reason a cache keeps its key — to be able to
+/// tell what a stored value was a translation *of* when somebody asks why a
+/// grower saw a particular sentence.
+model ContentTranslation {
+  hash      String   @id
+  locale    String
+  source    String
+  value     String
+  provider  String
+  createdAt DateTime @default(now())
+
+  @@index([locale])
+}
+
 model Setting {
   key   String @id
   value String
+}
+
+// ---------------------------------------------------------------------------
+// DPDP — consent, rights requests and breach records
+// ---------------------------------------------------------------------------
+
+/// One recorded act of consent, append-only.
+///
+/// Withdrawal writes a NEW row rather than editing the grant, because "what
+/// did they agree to, and when" has to survive the withdrawal — that trail is
+/// the only evidence the consent was ever validly taken.
+model ConsentRecord {
+  id String @id @default(cuid())
+
+  /// Lowercased email. A store customer has no account, so this is the only
+  /// identifier both populations share.
+  subject  String
+  clientId String?
+
+  purpose String // ORDER_FULFILMENT | ENQUIRY | PORTAL_ACCOUNT
+  granted Boolean
+  source  String // CHECKOUT | CONTACT_FORM | PORTAL
+
+  /// Which version of the notice they were shown. Without this the record
+  /// proves someone ticked a box, not what they were told.
+  noticeVersion String
+
+  createdAt DateTime @default(now())
+
+  @@index([subject, createdAt])
+  @@index([clientId])
+}
+
+/// A Data Principal exercising a right (DPDP s.11-s.14) or raising a
+/// grievance (s.13). Jinto works the queue from the admin.
+model DataRequest {
+  id String @id @default(cuid())
+
+  /// Shown to the requester so they can follow it up without an account.
+  reference String @unique
+
+  subject  String // lowercased email
+  name     String
+  phone    String?
+  clientId String?
+
+  kind    String // ACCESS | CORRECTION | ERASURE | NOMINATION | GRIEVANCE
+  details String?
+
+  status   String  @default("RECEIVED") // RECEIVED | IN_PROGRESS | COMPLETED | REJECTED
+  response String?
+
+  /// The response deadline, stamped at creation so the clock is visible.
+  dueBy       DateTime
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([subject])
+}
+
+/// A personal data breach. DPDP s.8(6) requires notifying the Board AND every
+/// affected Data Principal — there is no "low risk" exemption to hide behind,
+/// so the record tracks both notifications separately.
+model BreachRecord {
+  id String @id @default(cuid())
+
+  reference   String   @unique
+  detectedAt  DateTime
+  description String
+  affected    Int      @default(0)
+
+  boardNotifiedAt      DateTime?
+  principalsNotifiedAt DateTime?
+
+  remediation String?
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// A permission the admin has decided for one grower, overriding the default
+/// their role would otherwise give them (Doc 06 s.4, "Dynamic Permissions").
+///
+/// Only decisions are stored. A grower with no row for a key follows the role
+/// default from src/lib/permissions.ts, which means two things: the table stays
+/// small, and changing a default later moves everyone who was never given an
+/// explicit answer. It also makes "did Jinto actually decide this?" a question
+/// the data can answer — absent is not the same as denied.
+model ClientPermission {
+  id       String @id @default(cuid())
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  /// Matches a key in the catalogue in src/lib/permissions.ts. Kept as a string
+  /// rather than an enum so a new permission is a code deploy, not a migration.
+  key     String
+  allowed Boolean
+
+  /// Who changed it last. The audit log carries the full history; this is here
+  /// so the admin screen can show it without a join to the log.
+  setByUserId String?
+  setBy       User?   @relation(fields: [setByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, key])
+  @@index([clientId])
+}
+
+/// A message from the public contact form.
+///
+/// Stored rather than emailed because there is no mail infrastructure yet, and
+/// a form that says "sent successfully" while doing nothing is worse than no
+/// form at all — it loses the enquiry and tells the sender it did not.
+model Enquiry {
+  id        String @id @default(cuid())
+  /// Quoted back to the sender so they can follow it up by phone.
+  reference String @unique
+
+  name    String
+  email   String
+  phone   String?
+  topic   String // buying | wholesale | estate | other
+  message String
+
+  status   String    @default("NEW") // NEW | REPLIED | CLOSED
+  handledAt DateTime?
+  handledById String?
+  handledBy   User?   @relation("EnquiryHandler", fields: [handledById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+/// One notification, queued before it is sent.
+///
+/// An outbox rather than calling the provider inline, for three reasons. A
+/// grower's message must not fail to send because WhatsApp is having a bad
+/// afternoon. Retries need somewhere durable to count from. And "what did we
+/// send, to which number, and when" is a question that gets asked — by Jinto
+/// chasing a grower who says they were never told, and under DPDP, where the
+/// contact details are personal data being used for a purpose.
+model Notification {
+  id String @id @default(cuid())
+
+  channel String // WHATSAPP | SMS | EMAIL | CONSOLE
+  kind    String // NEW_MESSAGE | NEW_ENQUIRY | ROUNDS_DUE | DATA_REQUEST
+
+  /// The address as it was when this was queued, not a join to the person.
+  /// If a grower changes their number next week, the record must still say
+  /// where the message actually went.
+  toName  String
+  toPhone String?
+  toEmail String?
+
+  userId   String?
+  user     User?   @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  body String
+
+  status    String    @default("PENDING") // PENDING | SENT | FAILED
+  attempts  Int       @default(0)
+  lastError String?
+  sentAt    DateTime?
+
+  /// Idempotency for anything on a schedule. A daily digest carries the date,
+  /// so a cron that fires twice still only sends once.
+  dedupeKey String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+/// Permission to upload one file, issued before the bytes are sent.
+///
+/// Direct-to-storage uploads mean the browser sends the file somewhere this
+/// server never sees. That is the only way past the request-body ceiling — 4.5
+/// MB on Vercel however Next is configured — but it moves the trust boundary:
+/// the server can no longer inspect the bytes on their way in.
+///
+/// A ticket is what replaces that inspection. It is issued only after the
+/// caller's permission is checked, it names the storage key (never the client),
+/// it caps the size and pins the content type, and it expires. When the browser
+/// reports the upload finished, the completion step re-reads the ticket and
+/// verifies what actually landed rather than believing what it is told.
+model UploadTicket {
+  id    String @id @default(cuid())
+  /// The bearer value in the upload URL. Random, single-use.
+  token String @unique
+
+  userId   String
+  user     User   @relation("UploadTicketIssuer", fields: [userId], references: [id], onDelete: Cascade)
+  clientId String
+
+  /// IMAGE | VIDEO | DOCUMENT — decided at issue, enforced at completion.
+  kind     String
+  mimeType String
+  filename String
+  maxBytes Int
+
+  /// Server-assigned. A client-supplied key is a path-traversal and an
+  /// overwrite-someone-else's-file bug waiting to be written.
+  storageKey String
+
+  status      String    @default("ISSUED") // ISSUED | COMPLETED | EXPIRED
+  bytes       Int?
+  expiresAt   DateTime
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([status, expiresAt])
+  @@index([clientId])
 }

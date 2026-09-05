@@ -30,6 +30,24 @@ const OUT = "public/photos";
 const s = (name) => path.join(SRC, `ChatGPT Image Aug 24, 2026, ${name} PM.png`);
 
 /**
+ * A second batch, of the plant rather than the product: the estate under its
+ * shade canopy, a flowering panicle, and a clump carrying a full crop.
+ *
+ * Two of the six supplied were left out on purpose. One was a third plantation
+ * view close enough to the two kept that it would only pad the set. The other
+ * showed coffee, not cardamom — glossy elliptical leaves on an opposite-branching
+ * shrub, where cardamom carries long lanceolate leaves on reed-like pseudostems.
+ * A grower in Idukki would spot it before the page finished loading.
+ */
+const sep = (name) =>
+  path.join(
+    SRC,
+    name.endsWith(")")
+      ? `ChatGPT Image Sep 1, 2026, ${name}.png`
+      : `ChatGPT Image Sep 1, 2026, ${name} PM.png`,
+  );
+
+/**
  * gravity picks which part survives the crop. The plantation shot is composed
  * down the row, so it keeps its centre; the pod-on-white shots sit low in frame
  * and lose their empty sky if cropped centrally.
@@ -93,6 +111,45 @@ const JOBS = [
     gravity: "east", // the pile sits right; the left is deliberate copy space
     note: "pile with leaf, copy space left",
   },
+
+  /* Second batch — the estate and the plant itself. */
+  {
+    src: sep("08_40_09 PM (2)"),
+    out: "estate-canopy.webp",
+    width: 1600,
+    height: 900, // 16:9 — services hero, drawn at most ~900px wide
+    quality: 72,
+    // Cropping 5:4 to 16:9 drops a third of the height. Centre keeps the band
+    // that carries the meaning: the shade canopy meeting the cardamom under it.
+    gravity: "centre",
+    note: "shade canopy over cardamom, low light",
+  },
+  {
+    src: sep("08_40_25"),
+    out: "estate-morning.webp",
+    width: 1600,
+    height: 900,
+    quality: 72,
+    gravity: "centre",
+    note: "sunlit plantation, hills behind",
+  },
+  {
+    src: sep("08_42_36"),
+    out: "flower-detail.webp",
+    width: 1400,
+    height: 1050, // already 4:3 — resized, not cropped
+    gravity: "centre",
+    note: "flower and forming capsules on the panicle",
+  },
+  {
+    src: sep("08_39_28"),
+    out: "panicle-harvest.webp",
+    width: 1200,
+    height: 900,
+    quality: 72,
+    gravity: "centre",
+    note: "clump base, panicles carrying a full crop",
+  },
 ];
 
 await mkdir(OUT, { recursive: true });
@@ -109,7 +166,7 @@ for (const job of JOBS) {
   const dest = path.join(OUT, job.out);
   const info = await sharp(job.src)
     .resize(job.width, job.height, { fit: "cover", position: job.gravity })
-    .webp({ quality: 76, effort: 6 })
+    .webp({ quality: job.quality ?? 76, effort: 6 })
     .toFile(dest);
 
   // metadata().size is not populated when the input is a path, only a buffer.

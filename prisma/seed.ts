@@ -4,6 +4,7 @@ import { copyFileSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { ACTIVITY_TYPES } from "../src/lib/constants";
+import { NOTICE_VERSION, RESPONSE_DAYS } from "../src/lib/dpdp";
 
 const db = new PrismaClient();
 
@@ -78,8 +79,87 @@ function privateAsset(source: string, baseName: string) {
   };
 }
 
+/**
+ * Refuse to run over data somebody might want.
+ *
+ * This script is a wipe-and-rebuild, not an insert: it empties every table and
+ * deletes `private-uploads/` off the disk. That is correct for `db:reset`,
+ * which force-resets the schema first and hands it an empty database.
+ *
+ * The trap is the neighbouring command. `npm run db:seed` reads like "add the
+ * demo data" and is one word away in the same table of scripts, but on a
+ * populated database it destroys every grower's uploads and every order — and
+ * if it then fails partway (it is not idempotent; order references collide) it
+ * leaves the database half-built, with a store containing no products and no
+ * error that says so.
+ *
+ * So: look before deleting. `db:reset` is unaffected, because by the time the
+ * seed runs there is nothing left to protect.
+ */
+async function guardExistingData() {
+  const forced = process.env.SEED_FORCE === "1";
+
+  if (process.env.NODE_ENV === "production" && !forced) {
+    console.error(
+      "\n  Refusing to seed: NODE_ENV=production.\n\n" +
+        "  This script deletes every user, every order and every uploaded\n" +
+        "  file. If that is genuinely what you want, run it again with\n" +
+        "  SEED_FORCE=1.\n",
+    );
+    return false;
+  }
+
+  const [clients, orders, attachments] = await Promise.all([
+    db.client.count(),
+    db.order.count(),
+    db.attachment.count(),
+  ]);
+  const total = clients + orders + attachments;
+
+  if (total > 0 && !forced) {
+    console.error(
+      `\n  Refusing to seed: the database is not empty.\n\n` +
+        `    clients      ${clients}\n` +
+        `    orders       ${orders}\n` +
+        `    attachments  ${attachments}\n\n` +
+        `  Seeding would delete all of it, along with everything in\n` +
+        `  private-uploads/ on disk.\n\n` +
+        `  To rebuild the demo from scratch:  npm run db:reset\n` +
+        `  To seed anyway, knowing the above:  SEED_FORCE=1 npm run db:seed\n`,
+    );
+    return false;
+  }
+
+  if (forced && total > 0) {
+    console.log(`SEED_FORCE=1 — overwriting ${total} existing rows.`);
+  }
+  return true;
+}
+
 async function main() {
+  if (!(await guardExistingData())) {
+    process.exitCode = 1;
+    return;
+  }
+
   console.log("Clearing existing data…");
+  // Leaf tables first. These four were missed when they were added, which is
+  // why a re-run used to die on `Enquiry.reference` halfway through and leave
+  // the database half-built. Anything added later belongs here too — the check
+  // is `npm run check:seed`, which compares this list against the schema.
+  await db.contentTranslation.deleteMany();
+  await db.translation.deleteMany();
+  await db.harvestGrade.deleteMany();
+  await db.activityPlot.deleteMany();
+  await db.materialCategory.deleteMany();
+  await db.activityKind.deleteMany();
+  await db.enquiry.deleteMany();
+  await db.notification.deleteMany();
+  await db.uploadTicket.deleteMany();
+  await db.clientPermission.deleteMany();
+  await db.consentRecord.deleteMany();
+  await db.dataRequest.deleteMany();
+  await db.breachRecord.deleteMany();
   await db.orderItem.deleteMany();
   await db.order.deleteMany();
   await db.productImage.deleteMany();
@@ -622,7 +702,86 @@ async function main() {
     },
   });
 
+  // One file the grower sent in themselves, so the demo shows both sides of
+  // the upload feature: it appears under "Sent in by Thomas" in the admin, and
+  // it is the only document on his own screen carrying a delete control.
+  const thomasLogin = await db.user.findFirst({
+    where: { clientId: created[0].id, role: "CLIENT" },
+    select: { id: true },
+  });
+
+  await db.attachment.create({
+    data: {
+      clientId: created[0].id,
+      uploadedById: thomasLogin?.id ?? null,
+      kind: "DOCUMENT",
+      ...privateAsset(DOC(1), "Lab-report-from-grower"),
+      category: "LAB_REPORT",
+      caption: "Sent in by Thomas — residue test from his own lab",
+    },
+  });
+
+  // One enquiry waiting, so the admin queue shows its shape rather than an
+  // empty state — and with the consent record the form would really have
+  // written alongside it.
+  await db.enquiry.create({
+    data: {
+      reference: "ENQ-M4T7RB",
+      name: "Ravi Kumar",
+      email: "ravi.kumar@example.com",
+      phone: "9847012345",
+      topic: "wholesale",
+      message:
+        "Looking for 40 kg of AGEB per month for our retail chain in Kochi. What are your rates for a standing order?",
+    },
+  });
+
+  await db.consentRecord.create({
+    data: {
+      subject: "ravi.kumar@example.com",
+      purpose: "ENQUIRY",
+      granted: true,
+      source: "CONTACT_FORM",
+      noticeVersion: NOTICE_VERSION,
+    },
+  });
+
+  // One notification already sent, so the outbox in the admin shows its shape.
+  // Queued as CONSOLE because that is what an unconfigured install uses — the
+  // screen says plainly that nothing reached a phone.
+  await db.notification.create({
+    data: {
+      channel: "CONSOLE",
+      kind: "ROUNDS_DUE",
+      toName: "Jinto Jomon",
+      toPhone: "8590657900",
+      toEmail: "jinto@aela.co.in",
+      userId: admin.id,
+      body: [
+        "2 estates need attention:",
+        "",
+        "• Rajan Pillai — Thekkemala Estate: spray round late",
+        "• Mary Joseph — Kalapurackal Estate: fertilizer round late",
+        "",
+        "Open the admin to log the work.",
+      ].join("\n"),
+      status: "SENT",
+      attempts: 1,
+      sentAt: daysAgo(1, 6),
+      createdAt: daysAgo(1, 6),
+      dedupeKey: "rounds-due:seed",
+    },
+  });
+
   console.log("Messages…");
+  const thomasLoginId =
+    (
+      await db.user.findFirst({
+        where: { clientId: created[0].id, role: "CLIENT" },
+        select: { id: true },
+      })
+    )?.id ?? admin.id;
+
   await db.message.createMany({
     data: [
       {
@@ -637,6 +796,16 @@ async function main() {
         senderUserId: admin.id,
         body: "Thrips were showing on the lower block, I sprayed on Tuesday. Will check again next week.",
         createdAt: daysAgo(11, 17),
+        readAt: daysAgo(11, 15),
+      },
+      // A reply from the grower, unread — so the admin lands on a conversation
+      // with something waiting rather than a monologue, and the unread badge
+      // has something to show.
+      {
+        clientId: created[0].id,
+        senderUserId: thomasLoginId,
+        body: "Thank you Jinto. When is the next picking round? I would like to be there for it.",
+        createdAt: daysAgo(2, 9),
       },
     ],
   });
@@ -766,14 +935,63 @@ async function main() {
     },
   });
 
-  await db.setting.createMany({
-    data: [
-      { key: "business_name", value: "Cardamom" },
-      { key: "contact_phone", value: "8590657900" },
-      { key: "contact_email", value: "hello@aela.co.in" },
-      { key: "whatsapp", value: "918590657900" },
-    ],
+  // The demo order was placed under a consent notice, so it has the record to
+  // prove it — an order without one would misrepresent how checkout works.
+  await db.consentRecord.create({
+    data: {
+      subject: "priya@example.com",
+      purpose: "ORDER_FULFILMENT",
+      granted: true,
+      source: "CHECKOUT",
+      noticeVersion: NOTICE_VERSION,
+    },
   });
+
+  // One request already in the queue, so the admin screen shows its shape
+  // rather than an empty state.
+  const thomasClient = await db.client.findUnique({
+    where: { code: "CLT-001" },
+    select: { id: true, name: true, phone: true },
+  });
+
+  if (thomasClient) {
+    await db.client.update({
+      where: { id: thomasClient.id },
+      data: {
+        nomineeName: "Anita Mathew",
+        nomineePhone: "9846778899",
+        nomineeRelation: "Daughter",
+      },
+    });
+  }
+
+  const dueBy = new Date();
+  dueBy.setDate(dueBy.getDate() + RESPONSE_DAYS);
+
+  await db.dataRequest.create({
+    data: {
+      reference: "DPR-K7M2QX",
+      subject: "priya@example.com",
+      name: "Priya Menon",
+      phone: "9846001122",
+      kind: "ACCESS",
+      details: "Could you tell me what you have on file from my order?",
+      dueBy,
+    },
+  });
+
+  // No Setting rows are seeded, deliberately.
+  //
+  // These used to hold the business name and contact details, written when
+  // nothing read them — and they had already drifted: `business_name` said
+  // "Cardamom" while every page said "AELA". Now that the site does read them
+  // (src/lib/content.ts), seeding them would mean shipping a demo whose header
+  // shows the wrong name.
+  //
+  // A row in this table means "somebody changed this on purpose". Absent means
+  // "use what the code ships with" — the same distinction the permissions
+  // catalogue draws, and the reason a fresh install renders correctly with an
+  // empty settings table.
 
   const counts = {
     clients: await db.client.count(),
@@ -783,6 +1001,11 @@ async function main() {
     workers: await db.worker.count(),
     attachments: await db.attachment.count(),
     products: await db.product.count(),
+    consents: await db.consentRecord.count(),
+    dataRequests: await db.dataRequest.count(),
+    growerUploads: await db.attachment.count({ where: { uploadedById: { not: null } } }),
+    enquiries: await db.enquiry.count(),
+    notifications: await db.notification.count(),
   };
 
   console.log("\nSeeded:", counts);

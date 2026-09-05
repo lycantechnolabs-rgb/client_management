@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 import {
   ArrowRight,
@@ -69,6 +70,21 @@ export default function HowItWorksPage() {
             we work: nothing is done on your land without a record of it reaching
             you.
           </p>
+        </Reveal>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
+        <Reveal>
+          <div className="relative aspect-[16/9] overflow-hidden rounded-[--radius-card] bg-tint">
+            <Image
+              src="/photos/estate-morning.webp"
+              alt="Morning light through the shade canopy over a cardamom plantation"
+              fill
+              priority
+              sizes="(max-width: 1152px) 100vw, 1088px"
+              className="object-cover"
+            />
+          </div>
         </Reveal>
       </section>
 

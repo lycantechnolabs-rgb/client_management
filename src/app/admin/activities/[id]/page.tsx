@@ -9,6 +9,10 @@ import { Badge, Card, CardBody, Divider, SectionHeading } from "@/components/ui"
 import { VideoPlayer } from "@/components/video-player";
 import { ACTIVITY_TYPES, activityLabel } from "@/lib/constants";
 import { kg, money, shortDate } from "@/lib/utils";
+import { activityKinds, hasKind } from "@/lib/activity-kinds";
+import { materialCategoryLabels } from "@/lib/material-categories";
+import { humanTranslationsFor } from "@/lib/translate/human";
+import { TranslatePanel } from "./translate-panel";
 
 export default async function AdminActivityDetail({
   params,
@@ -23,7 +27,10 @@ export default async function AdminActivityDetail({
     include: {
       client: true,
       plot: true,
-      materials: true,
+      materials: { include: { extraCategories: { select: { key: true } } } },
+      extraKinds: { select: { key: true } },
+      extraPlots: { select: { plot: { select: { id: true, name: true } } } },
+      grades: { orderBy: { driedKg: "desc" } },
       attachments: true,
       createdBy: { select: { name: true } },
       workers: { include: { worker: { select: { name: true, role: true } } } },
@@ -32,8 +39,17 @@ export default async function AdminActivityDetail({
 
   if (!activity) notFound();
 
-  const tone =
-    ACTIVITY_TYPES.find((t) => t.key === activity.type)?.tone ?? "muted";
+  const plotNames = [
+    ...(activity.plot?.name ? [activity.plot.name] : []),
+    ...activity.extraPlots.map((p) => p.plot.name),
+  ];
+
+  // What Jinto has already typed for this entry, if anything.
+  const stored = await humanTranslationsFor(
+    [activity.title, activity.notes],
+    "ml",
+  );
+
   const images = activity.attachments.filter((a) => a.kind === "IMAGE");
   const videos = activity.attachments.filter((a) => a.kind === "VIDEO");
   const docs = activity.attachments.filter((a) => a.kind === "DOCUMENT");
@@ -42,13 +58,25 @@ export default async function AdminActivityDetail({
     <div className="mx-auto max-w-3xl space-y-6">
       <Link
         href="/admin/activities"
-        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-forest"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted hover:text-forest"
       >
         <ArrowLeft className="size-4" /> Work log
       </Link>
 
       <header>
-        <Badge tone={tone as never}>{activityLabel(activity.type)}</Badge>
+        <div className="flex flex-wrap gap-1.5">
+          {activityKinds(activity).map((key) => (
+            <Badge
+              key={key}
+              tone={
+                (ACTIVITY_TYPES.find((t) => t.key === key)?.tone ??
+                  "muted") as never
+              }
+            >
+              {activityLabel(key)}
+            </Badge>
+          ))}
+        </div>
         <h1 className="mt-2 font-display text-2xl leading-tight text-forest">
           {activity.title}
         </h1>
@@ -61,10 +89,10 @@ export default async function AdminActivityDetail({
             <User className="size-3.5" />
             {activity.client.name}
           </Link>
-          {activity.plot ? (
+          {plotNames.length > 0 ? (
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3.5" />
-              {activity.plot.name}
+              {plotNames.join(", ")}
             </span>
           ) : null}
         </div>
@@ -121,14 +149,32 @@ export default async function AdminActivityDetail({
         </section>
       ) : null}
 
-      {activity.type === "HARVEST" ? (
+      {hasKind(activity, "HARVEST") ? (
         <Card>
           <CardBody className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Stat label="Green" value={kg(activity.greenWeightKg)} />
             <Stat label="Dried" value={kg(activity.driedWeightKg)} />
             <Stat label="Rate" value={money(activity.ratePerKg)} />
             <Stat label="Sale value" value={money(activity.saleAmount)} />
-            {activity.grade ? (
+            {/*
+              The lots, not one grade. A round split across grades has a weight
+              and a price for each, and collapsing that to the heaviest one
+              hides what the picking actually made.
+            */}
+            {activity.grades.length > 0 ? (
+              <ul className="col-span-2 space-y-1 text-sm text-body sm:col-span-4">
+                {activity.grades.map((g) => (
+                  <li key={g.id} className="flex flex-wrap justify-between gap-2">
+                    <strong className="font-medium text-forest">{g.grade}</strong>
+                    <span>
+                      {kg(g.driedKg)}
+                      {g.ratePerKg != null ? ` at ${money(g.ratePerKg)}/kg` : ""}
+                      {g.saleAmount != null ? ` · ${money(g.saleAmount)}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : activity.grade ? (
               <p className="col-span-2 text-sm text-body sm:col-span-4">
                 Grade: <strong className="text-forest">{activity.grade}</strong>
               </p>
@@ -151,7 +197,7 @@ export default async function AdminActivityDetail({
                         {m.name}
                       </p>
                       <p className="text-xs text-muted">
-                        {m.category.toLowerCase()}
+                        {materialCategoryLabels(m).join(" · ").toLowerCase()}
                       </p>
                     </div>
                     <div className="shrink-0 text-right text-sm">
@@ -224,6 +270,17 @@ export default async function AdminActivityDetail({
           </div>
         </section>
       ) : null}
+
+      <section>
+        <SectionHeading title="For Malayalam readers" />
+        <TranslatePanel
+          activityId={activity.id}
+          title={activity.title}
+          notes={activity.notes}
+          titleMl={stored.get(activity.title.trim()) ?? ""}
+          notesMl={stored.get((activity.notes ?? "").trim()) ?? ""}
+        />
+      </section>
     </div>
   );
 }

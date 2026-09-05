@@ -13,14 +13,24 @@ import {
   StatTile,
 } from "@/components/ui";
 import { kg, money, relativeDays } from "@/lib/utils";
+import { getContent } from "@/lib/content";
+import { getI18n } from "@/lib/i18n";
+import { translateActivities } from "@/lib/translate/activities";
 
 export default async function DashboardHome() {
+  const c = await getContent();
+  const { locale, t } = await getI18n();
   const user = await requireClient();
   const [{ plots, recent, driedTotal, saleTotal, spend, activityCount }, rounds] =
     await Promise.all([
       getClientOverview(user.clientId),
       getRoundBoard(user.clientId),
     ]);
+
+  // Jinto writes these in English; a grower who reads only Malayalam cannot
+  // read the note about their own estate. Cached, so this is one call the first
+  // time and none afterwards. See src/lib/translate.
+  const shown = await translateActivities(recent, locale);
 
   const lastVisit = recent[0]?.date;
 
@@ -31,39 +41,48 @@ export default async function DashboardHome() {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatTile
             tone="forest"
-            label="Cardamom dried"
+            label={t("home.cardamomDried")}
             value={kg(driedTotal)}
-            sub="this season"
+            sub={t("home.thisSeason")}
           />
           <StatTile
-            label="Sale value"
+            tone="glass"
+            label={t("home.saleValue")}
             value={money(saleTotal)}
-            sub="from harvests logged"
+            sub={t("home.fromHarvests")}
           />
           <StatTile
-            label="Spent on estate"
+            tone="glass"
+            label={t("home.spentOnEstate")}
             value={money(spend.total)}
-            sub={`${money(spend.labour)} labour · ${money(spend.material)} inputs`}
+            sub={`${money(spend.labour)} ${t("home.labour")} · ${money(spend.material)} ${t("home.inputs")}`}
           />
           <StatTile
-            label="Last visit"
-            value={lastVisit ? relativeDays(lastVisit) : "—"}
-            sub={`${activityCount} jobs recorded`}
+            tone="glass"
+            label={t("home.lastVisit")}
+            value={lastVisit ? relativeDays(lastVisit, t) : "—"}
+            sub={`${activityCount} ${t("home.jobsRecorded")}`}
           />
         </div>
       </section>
 
       {/* Where each estate sits in the 45-day picking round */}
       {rounds.length > 0 ? (
-        <RoundBoard rows={rounds} showClient={false} />
+        <RoundBoard
+          rows={rounds}
+          showClient={false}
+          t={t}
+          locale={locale}
+          variant="glass"
+        />
       ) : null}
 
       {plots.length > 0 ? (
         <section>
-          <SectionHeading title="Your estates" />
+          <SectionHeading title={t("home.yourEstates")} />
           <div className="grid gap-3 sm:grid-cols-2">
             {plots.map((plot) => (
-              <Card key={plot.id}>
+              <Card key={plot.id} variant="glass">
                 <CardBody className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-display text-base text-forest">
@@ -72,8 +91,8 @@ export default async function DashboardHome() {
                     <p className="mt-0.5 text-xs text-muted">
                       {[
                         plot.location,
-                        plot.areaAcres ? `${plot.areaAcres} acres` : null,
-                        plot.plants ? `${plot.plants.toLocaleString("en-IN")} plants` : null,
+                        plot.areaAcres ? `${plot.areaAcres} ${t("home.acres")}` : null,
+                        plot.plants ? `${plot.plants.toLocaleString("en-IN")} ${t("home.plants")}` : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -81,9 +100,9 @@ export default async function DashboardHome() {
                   </div>
                   <Link
                     href={`/dashboard/activities?plot=${plot.id}`}
-                    className="shrink-0 text-xs font-medium text-moss hover:underline"
+                    className="inline-flex min-h-11 shrink-0 items-center text-xs font-medium text-moss hover:underline"
                   >
-                    View work
+                    {t("home.viewWork")}
                   </Link>
                 </CardBody>
               </Card>
@@ -94,29 +113,33 @@ export default async function DashboardHome() {
 
       <section>
         <SectionHeading
-          title="Recent work"
+          title={t("home.recentWork")}
           action={
             <Link
               href="/dashboard/activities"
-              className="inline-flex items-center gap-1 text-sm text-moss hover:underline"
+              className="inline-flex min-h-11 items-center gap-1 text-sm text-moss hover:underline"
             >
-              See all <ArrowRight className="size-3.5" />
+              {t("home.seeAll")} <ArrowRight className="size-3.5" />
             </Link>
           }
         />
 
         {recent.length === 0 ? (
           <EmptyState
-            title="Nothing recorded yet"
-            description="When Jinto visits your estate, the work he does will appear here with photos."
+            title={t("home.noWorkYet")}
+            description={t("home.noWorkYetBody")}
+            variant="glass"
           />
         ) : (
           <div className="space-y-3">
-            {recent.map((activity) => (
+            {shown.map((activity) => (
               <ActivityCard
+                t={t}
+                locale={locale}
                 key={activity.id}
                 href={`/dashboard/activities/${activity.id}`}
                 activity={activity}
+                variant="glass"
               />
             ))}
           </div>
@@ -128,21 +151,21 @@ export default async function DashboardHome() {
           <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-display text-lg text-cream">
-                Something to ask?
+                {t("home.somethingToAsk")}
               </p>
               <p className="mt-0.5 text-sm text-cream/70">
-                Message Jinto directly on WhatsApp.
+                {t("home.messageOnWhatsapp")}
               </p>
             </div>
             <ButtonLink
-              href="https://wa.me/918590657900"
+              href={`https://wa.me/${c.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
               variant="soft"
               className="shrink-0"
             >
               <MessageCircle className="size-4" />
-              WhatsApp
+              {t("home.whatsapp")}
             </ButtonLink>
           </CardBody>
         </Card>

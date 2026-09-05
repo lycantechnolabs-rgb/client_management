@@ -77,7 +77,7 @@ function IconButton({
       disabled={busy}
       aria-label={label}
       title={label}
-      className={`grid size-9 place-items-center rounded-lg transition-colors disabled:opacity-50 ${
+      className={`grid size-11 place-items-center rounded-lg transition-colors disabled:opacity-50 ${
         danger
           ? "text-danger hover:bg-danger/10"
           : "text-muted hover:bg-tint hover:text-forest"

@@ -351,11 +351,13 @@
 /* ---------------------------------------------------------------------------
    Glass
 
-   Frosted panels only work where something is moving behind them. On a flat
-   cream section a blurred panel has nothing to refract and just reads as a grey
-   box, so these are used in four places and no others: the sticky header, the
-   chips laid over the hero artwork, the portal's bottom bar with content
-   scrolling under it, and the dark forest panel.
+   Now the standard treatment for every card on the site — stat tiles, service
+   cards, product cards, step cards — not just the handful of spots (sticky
+   header, hero chips, portal bottom bar, dark forest panel) that originally
+   had something moving behind them to refract. On a flat, untextured section
+   the effect is subtler — closer to a frosted sheet than true glass — but the
+   translucency, blur and soft border still read as one consistent material
+   wherever a card sits, textured backdrop or not.
 
    The saturate() is the part people leave out. Blurring alone washes the colour
    out of what is behind and the panel goes flat and dead; pushing saturation

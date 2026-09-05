@@ -11,6 +11,8 @@ import type { PlotCycle, RoundStage } from "@/lib/cycle";
 import { describeCycle } from "@/lib/cycle";
 import { shortDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import type { Translator as T } from "@/lib/i18n";
+import type { StringKey } from "@/lib/i18n/en";
 
 export type RoundRow = {
   plotId: string;
@@ -22,14 +24,14 @@ export type RoundRow = {
 
 const STAGE_META: Record<
   RoundStage,
-  { label: string; icon: typeof PackageOpen }
+  { key: StringKey; icon: typeof PackageOpen }
 > = {
-  HARVEST: { label: "Picking", icon: PackageOpen },
-  FERTILIZER: { label: "Fertilizer", icon: Sprout },
-  SPRAYING: { label: "Spray", icon: SprayCan },
+  HARVEST: { key: "rounds.stagePicking", icon: PackageOpen },
+  FERTILIZER: { key: "rounds.stageFertilizer", icon: Sprout },
+  SPRAYING: { key: "rounds.stageSpray", icon: SprayCan },
 };
 
-function StatusPill({ cycle }: { cycle: PlotCycle }) {
+function StatusPill({ cycle, t }: { cycle: PlotCycle; t: T }) {
   const map = {
     overdue: "bg-danger/12 text-danger",
     due: "bg-warning/15 text-warning",
@@ -38,10 +40,12 @@ function StatusPill({ cycle }: { cycle: PlotCycle }) {
   } as const;
 
   const label = {
-    overdue: "Overdue",
-    due: "Due now",
+    overdue: t("rounds.statusOverdue"),
+    due: t("rounds.statusDueNow"),
+    // A bare day count needs no translating, and "d" is read as a number
+    // everywhere this is used.
     waiting: `${cycle.daysUntilNextHarvest}d`,
-    "no-history": "No history",
+    "no-history": t("rounds.noHistory"),
   } as const;
 
   return (
@@ -57,7 +61,7 @@ function StatusPill({ cycle }: { cycle: PlotCycle }) {
 }
 
 /** The three stages of the round, with what has been done since the last picking. */
-function StageTrack({ cycle }: { cycle: PlotCycle }) {
+function StageTrack({ cycle, t }: { cycle: PlotCycle; t: T }) {
   const stages: { stage: RoundStage; done: boolean; late: boolean }[] = [
     { stage: "HARVEST", done: true, late: false },
     {
@@ -71,7 +75,8 @@ function StageTrack({ cycle }: { cycle: PlotCycle }) {
   return (
     <div className="flex items-center gap-1.5">
       {stages.map((s, i) => {
-        const { icon: Icon, label } = STAGE_META[s.stage];
+        const { icon: Icon, key } = STAGE_META[s.stage];
+        const label = t(key);
         return (
           <div key={s.stage} className="flex items-center gap-1.5">
             <span
@@ -101,10 +106,17 @@ export function RoundBoard({
   rows,
   showClient = true,
   limit,
+  t,
+  locale,
+  variant = "surface",
 }: {
   rows: RoundRow[];
   showClient?: boolean;
   limit?: number;
+  /** Passed in: this renders in the grower's language and in Jinto's. */
+  t: T;
+  locale?: string;
+  variant?: "surface" | "glass";
 }) {
   const shown = limit ? rows.slice(0, limit) : rows;
   const pressing = rows.filter(
@@ -112,24 +124,29 @@ export function RoundBoard({
   ).length;
 
   return (
-    <div className="overflow-hidden rounded-[--radius-card] border border-line bg-surface">
+    <div
+      className={cn(
+        "overflow-hidden rounded-[--radius-card]",
+        variant === "glass" ? "glass" : "border border-line bg-surface",
+      )}
+    >
       <div className="flex items-center justify-between gap-3 border-b border-line-soft px-4 py-3 sm:px-5">
         <p className="text-sm font-medium text-forest">
-          Rounds due
+          {t("rounds.title")}
           {pressing > 0 ? (
             <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] text-warning">
               <AlertTriangle className="size-3" />
-              {pressing} need attention
+              {t("rounds.needAttention", { count: pressing })}
             </span>
           ) : (
             <span className="ms-2 inline-flex items-center gap-1 text-[11px] font-normal text-success">
               <CircleCheck className="size-3" />
-              all on schedule
+              {t("rounds.allOnSchedule")}
             </span>
           )}
         </p>
         <p className="hidden text-xs text-muted sm:block">
-          Picking returns about every 45 days
+          {t("rounds.cadence")}
         </p>
       </div>
 
@@ -148,18 +165,18 @@ export function RoundBoard({
                   ) : null}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">
-                  {describeCycle(r.cycle)}
+                  {describeCycle(r.cycle, t)}
                   {r.cycle.nextHarvestDue
-                    ? ` · due ${shortDate(r.cycle.nextHarvestDue)}`
+                    ? ` · ${t("rounds.due")} ${shortDate(r.cycle.nextHarvestDue, locale)}`
                     : ""}
                 </p>
               </div>
 
               <div className="hidden sm:block">
-                <StageTrack cycle={r.cycle} />
+                <StageTrack cycle={r.cycle} t={t} />
               </div>
 
-              <StatusPill cycle={r.cycle} />
+              <StatusPill cycle={r.cycle} t={t} />
               <ArrowRight className="size-4 shrink-0 text-muted" />
             </Link>
           </li>
@@ -167,7 +184,7 @@ export function RoundBoard({
 
         {shown.length === 0 ? (
           <li className="px-5 py-6 text-sm text-muted">
-            No estates with harvest history yet.
+            {t("rounds.noEstatesYet")}
           </li>
         ) : null}
       </ul>

@@ -10,13 +10,38 @@ import {
   EmptyState,
 } from "@/components/ui";
 import { money, relativeDays } from "@/lib/utils";
+import { ClientSearch } from "./client-search";
 
 export const metadata = { title: "Clients" };
 
-export default async function ClientsPage() {
+export default async function ClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   await requireAdmin();
+  const { q } = await searchParams;
+  const term = (q ?? "").trim();
+
+  // SQLite's LIKE is already case-insensitive for ASCII, which is why there is
+  // no `mode: "insensitive"` here. Moving to Postgres will need it added, or
+  // searching for "thomas" will stop finding "Thomas".
+  const where = term
+    ? {
+        OR: [
+          { name: { contains: term } },
+          { code: { contains: term } },
+          { village: { contains: term } },
+          { district: { contains: term } },
+          { phone: { contains: term } },
+          { whatsapp: { contains: term } },
+          { email: { contains: term } },
+        ],
+      }
+    : {};
 
   const clients = await db.client.findMany({
+    where,
     orderBy: [{ isActive: "desc" }, { code: "asc" }],
     include: {
       _count: { select: { plots: true, activities: true, workers: true } },
@@ -45,7 +70,19 @@ export default async function ClientsPage() {
         </ButtonLink>
       </div>
 
-      {clients.length === 0 ? (
+      <ClientSearch initial={term} />
+
+      {clients.length === 0 && term ? (
+        <EmptyState
+          title={`Nothing matches "${term}"`}
+          description="Try a name, client code, village or phone number."
+          action={
+            <ButtonLink href="/admin/clients" variant="outline">
+              Clear search
+            </ButtonLink>
+          }
+        />
+      ) : clients.length === 0 ? (
         <EmptyState
           title="No clients yet"
           description="Add the first grower whose estate you manage."

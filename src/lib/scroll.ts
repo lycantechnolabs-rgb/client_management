@@ -219,10 +219,6 @@ function write(el: HTMLElement | null, name: string, value: number) {
 /* Easing and interpolation                                                   */
 /* -------------------------------------------------------------------------- */
 
-export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-export const easeInOutCubic = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** Maps `p` from [inA, inB] onto [outA, outB], clamped at both ends. */
@@ -271,85 +267,6 @@ export function useInView<T extends HTMLElement>(
   }, [once, threshold, margin]);
 
   return { ref, inView };
-}
-
-/* -------------------------------------------------------------------------- */
-/* Device capability                                                          */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Whether this device should be asked to run the WebGL scene at all.
- *
- * The people this site is for open it on mid-range Android phones on hill
- * network. A 3D canvas that drops them to 12fps is worse than no 3D at all, so
- * anything low-powered, battery-saving or motion-averse gets the flat version.
- */
-function probeWebGL() {
-  const nav = navigator as Navigator & {
-    deviceMemory?: number;
-    connection?: { saveData?: boolean; effectiveType?: string };
-  };
-
-  if (nav.connection?.saveData) return false;
-  if ((nav.deviceMemory ?? 4) < 4) return false;
-  if ((nav.hardwareConcurrency ?? 4) < 4) return false;
-
-  // Cheapest reliable check: ask for a context and immediately give it back.
-  const canvas = document.createElement("canvas");
-  const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-  if (!gl) return false;
-
-  (
-    gl.getExtension("WEBGL_lose_context") as { loseContext(): void } | null
-  )?.loseContext();
-
-  return true;
-}
-
-export function useCanRender3D() {
-  const reduced = usePrefersReducedMotion();
-  const [supported, setSupported] = useState(false);
-
-  useEffect(() => {
-    // Deferred out of the effect on purpose: creating a WebGL context is not
-    // free, and doing it during hydration would delay the moment the page
-    // becomes interactive for the sake of decoration. A timer rather than a
-    // frame, so a tab opened in the background still resolves — rAF is not
-    // serviced at all until a tab composites.
-    let cancelled = false;
-    const id = setTimeout(() => {
-      if (!cancelled) setSupported(probeWebGL());
-    }, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, []);
-
-  return supported && !reduced;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Pointer                                                                    */
-/* -------------------------------------------------------------------------- */
-
-/** Normalised pointer position (-1..1) over the whole window, damped. */
-export function usePointer(enabled = true) {
-  const pointer = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (!enabled) return;
-    if (window.matchMedia("(pointer: coarse)").matches) return;
-
-    const onMove = (e: PointerEvent) => {
-      pointer.current.x = (e.clientX / window.innerWidth) * 2 - 1;
-      pointer.current.y = (e.clientY / window.innerHeight) * 2 - 1;
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
-  }, [enabled]);
-
-  return pointer;
 }
 
 /** Scroll velocity in px/frame, damped back to zero when the page settles. */

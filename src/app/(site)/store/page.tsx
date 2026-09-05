@@ -61,7 +61,7 @@ export default async function ProductsPage() {
         ].map((f) => (
           <li
             key={f.title}
-            className="flex items-start gap-3 rounded-[--radius-card] border border-line bg-surface/70 p-4"
+            className="glass flex items-start gap-3 rounded-[--radius-card] p-4"
           >
             <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-tint text-moss">
               <f.icon className="size-4" />
@@ -97,7 +97,7 @@ export default async function ProductsPage() {
               <Link
                 key={p.id}
                 href={`/store/${p.slug}`}
-                className="group flex flex-col overflow-hidden rounded-[--radius-card] border border-line bg-surface shadow-card transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-moss/50 hover:shadow-lift"
+                className="glass group flex flex-col overflow-hidden rounded-[--radius-card] transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-moss/50 hover:shadow-lift"
               >
                 <div className="relative aspect-[5/4] overflow-hidden bg-tint">
                   {p.images[0] ? (

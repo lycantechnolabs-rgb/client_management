@@ -25,10 +25,12 @@ const buttonStyles = cva(
         danger: "bg-danger text-white hover:opacity-90",
       },
       size: {
-        // 44px min height — thumb-sized, for one-handed use in the field
+        // 44px min height throughout — thumb-sized, for one-handed use in the
+        // field. `sm` is narrower and lighter than `md`, not shorter: a 36px
+        // button is a miss waiting to happen on a phone held in one hand.
         md: "min-h-11 px-5 text-sm",
         lg: "min-h-12 px-6 text-base",
-        sm: "min-h-9 px-4 text-sm",
+        sm: "min-h-11 px-4 text-sm",
         icon: "size-11 rounded-full",
       },
     },
@@ -68,12 +70,14 @@ export function ButtonLink({
 
 export function Card({
   className,
+  variant = "surface",
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & { variant?: "surface" | "glass" }) {
   return (
     <div
       className={cn(
-        "rounded-[--radius-card] border border-line bg-surface shadow-card",
+        "rounded-[--radius-card]",
+        variant === "glass" ? "glass" : "border border-line bg-surface shadow-card",
         className,
       )}
       {...props}
@@ -205,13 +209,20 @@ export function EmptyState({
   title,
   description,
   action,
+  variant = "surface",
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
+  variant?: "surface" | "glass";
 }) {
   return (
-    <div className="flex flex-col items-center rounded-[--radius-card] border border-dashed border-line bg-surface/60 px-6 py-12 text-center">
+    <div
+      className={cn(
+        "flex flex-col items-center rounded-[--radius-card] px-6 py-12 text-center",
+        variant === "glass" ? "glass" : "border border-dashed border-line bg-surface/60",
+      )}
+    >
       <div className="mb-3 grid size-14 place-items-center rounded-full bg-tint text-2xl">
         🌿
       </div>
@@ -237,15 +248,16 @@ export function StatTile({
   label: string;
   value: string;
   sub?: string;
-  tone?: "surface" | "forest" | "tint";
+  tone?: "surface" | "forest" | "tint" | "glass";
 }) {
   return (
     <div
       className={cn(
-        "rounded-[--radius-card] border p-4",
-        tone === "forest" && "border-forest bg-forest text-cream",
-        tone === "tint" && "border-tint bg-tint",
-        tone === "surface" && "border-line bg-surface",
+        "rounded-[--radius-card] p-4",
+        tone === "forest" && "border border-forest bg-forest text-cream",
+        tone === "tint" && "border border-tint bg-tint",
+        tone === "surface" && "border border-line bg-surface",
+        tone === "glass" && "glass",
       )}
     >
       <p

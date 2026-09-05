@@ -3,6 +3,7 @@ import { requireClient } from "@/lib/session";
 import { getClientOverview } from "@/lib/queries";
 import { Card, CardBody, EmptyState, StatTile } from "@/components/ui";
 import { kg, money, shortDate } from "@/lib/utils";
+import { getI18n } from "@/lib/i18n";
 
 export const metadata = { title: "Harvest" };
 
@@ -11,12 +12,14 @@ export default async function HarvestPage() {
   const { harvests, driedTotal, saleTotal } = await getClientOverview(
     user.clientId,
   );
+  const { locale, t } = await getI18n();
 
   if (harvests.length === 0) {
     return (
       <EmptyState
-        title="No harvest recorded yet"
-        description="Each picking round will show here with weights, grade and what it fetched."
+        title={t("harvest.noneYet")}
+        description={t("harvest.noneYetBody")}
+        variant="glass"
       />
     );
   }
@@ -27,23 +30,24 @@ export default async function HarvestPage() {
   return (
     <div className="space-y-7">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile tone="forest" label="Dried total" value={kg(driedTotal)} />
-        <StatTile label="Green picked" value={kg(greenTotal)} />
-        <StatTile label="Sale value" value={money(saleTotal)} />
+        <StatTile tone="forest" label={t("harvest.driedTotal")} value={kg(driedTotal)} />
+        <StatTile tone="glass" label={t("harvest.greenPicked")} value={kg(greenTotal)} />
+        <StatTile tone="glass" label={t("harvest.value")} value={money(saleTotal)} />
         <StatTile
-          label="Average rate"
+          tone="glass"
+          label={t("harvest.averageRate")}
           value={money(avgRate)}
-          sub="per kg dried"
+          sub={t("harvest.perKgDried")}
         />
       </div>
 
       <section>
         <h2 className="mb-3 font-display text-lg text-forest">
-          Picking rounds ({harvests.length})
+          {t("harvest.pickingRounds")} ({harvests.length})
         </h2>
         <div className="space-y-3">
           {harvests.map((h) => (
-            <Card key={h.id}>
+            <Card key={h.id} variant="glass">
               <CardBody>
                 <Link
                   href={`/dashboard/activities/${h.id}`}
@@ -55,7 +59,7 @@ export default async function HarvestPage() {
                         {h.title}
                       </h3>
                       <p className="mt-0.5 text-xs text-muted">
-                        {shortDate(h.date)}
+                        {shortDate(h.date, locale)}
                         {h.grade ? ` · ${h.grade}` : ""}
                       </p>
                     </div>
@@ -66,19 +70,19 @@ export default async function HarvestPage() {
 
                   <dl className="mt-3 grid grid-cols-3 gap-3 rounded-xl bg-tint/50 p-3">
                     <div>
-                      <dt className="text-[11px] text-muted">Green</dt>
+                      <dt className="text-[11px] text-muted">{t("harvest.green")}</dt>
                       <dd className="text-sm font-medium text-forest">
                         {kg(h.greenWeightKg)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[11px] text-muted">Dried</dt>
+                      <dt className="text-[11px] text-muted">{t("harvest.driedLabel")}</dt>
                       <dd className="text-sm font-medium text-forest">
                         {kg(h.driedWeightKg)}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-[11px] text-muted">Rate</dt>
+                      <dt className="text-[11px] text-muted">{t("harvest.rateLabel")}</dt>
                       <dd className="text-sm font-medium text-forest">
                         {money(h.ratePerKg)}
                       </dd>

@@ -6,6 +6,9 @@ import { ActivityCard } from "@/components/activity-card";
 import { EmptyState } from "@/components/ui";
 import { ACTIVITY_TYPES } from "@/lib/constants";
 import { cn, monthLabel } from "@/lib/utils";
+import { getI18n } from "@/lib/i18n";
+import { activityLabelIn } from "@/lib/i18n/labels";
+import { translateActivities } from "@/lib/translate/activities";
 
 export const metadata = { title: "Work done" };
 
@@ -14,6 +17,7 @@ export default async function ActivitiesPage({
 }: {
   searchParams: Promise<{ type?: string; plot?: string }>;
 }) {
+  const { locale, t } = await getI18n();
   const user = await requireClient();
   const { type, plot } = await searchParams;
 
@@ -39,29 +43,35 @@ export default async function ActivitiesPage({
     return s ? `/dashboard/activities?${s}` : "/dashboard/activities";
   };
 
+  // Jinto types these in English. A grower who reads only Malayalam would
+  // otherwise see an untranslated wall of text on the one page that is entirely
+  // about their own estate. Before grouping, because the groups hold references
+  // to these objects. Cached, so this is one call on the first read and none
+  // after — see src/lib/translate.
+  const shown = await translateActivities(activities, locale);
+
   // Group by month so a long history stays readable.
   const groups: { label: string; items: typeof activities }[] = [];
-  for (const activity of activities) {
-    const label = monthLabel(activity.date);
+  for (const activity of shown) {
+    const label = monthLabel(activity.date, locale);
     const last = groups.at(-1);
     if (last?.label === label) last.items.push(activity);
     else groups.push({ label, items: [activity] });
   }
-
   return (
     <div className="space-y-5">
       <div className="-mx-4 overflow-x-auto px-4 no-scrollbar sm:mx-0 sm:px-0">
         <div className="flex w-max gap-2 pb-1">
           <FilterChip href={query({ type: undefined })} active={!type}>
-            All work
+            {t("filter.allWork")}
           </FilterChip>
-          {availableTypes.map((t) => (
+          {availableTypes.map((kind) => (
             <FilterChip
-              key={t.key}
-              href={query({ type: t.key })}
-              active={type === t.key}
+              key={kind.key}
+              href={query({ type: kind.key })}
+              active={type === kind.key}
             >
-              {t.label}
+              {activityLabelIn(t, kind.key)}
             </FilterChip>
           ))}
         </div>
@@ -70,7 +80,7 @@ export default async function ActivitiesPage({
       {plots.length > 1 ? (
         <div className="flex flex-wrap gap-2">
           <FilterChip href={query({ plot: undefined })} active={!plot} subtle>
-            All estates
+            {t("filter.allEstates")}
           </FilterChip>
           {plots.map((p) => (
             <FilterChip
@@ -87,8 +97,9 @@ export default async function ActivitiesPage({
 
       {activities.length === 0 ? (
         <EmptyState
-          title="No work under this filter"
-          description="Try a different type of work, or view everything."
+          title={t("work.noneUnderFilter")}
+          description={t("work.tryAnother")}
+          variant="glass"
         />
       ) : (
         <div className="space-y-6">
@@ -100,9 +111,12 @@ export default async function ActivitiesPage({
               <div className="space-y-3">
                 {group.items.map((activity) => (
                   <ActivityCard
+                t={t}
+                locale={locale}
                     key={activity.id}
                     href={`/dashboard/activities/${activity.id}`}
                     activity={activity}
+                    variant="glass"
                   />
                 ))}
               </div>
@@ -129,7 +143,7 @@ function FilterChip({
     <Link
       href={href}
       className={cn(
-        "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3.5 text-sm transition-colors",
+        "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-sm transition-colors",
         active
           ? "border-forest bg-forest text-cream"
           : "border-line bg-surface text-body hover:border-moss/40",

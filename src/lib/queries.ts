@@ -1,27 +1,81 @@
 import { db } from "@/lib/db";
 import { computeCycle, urgencyScore } from "@/lib/cycle";
 import type { RoundRow } from "@/components/round-board";
+import { activityKinds, kindFilter } from "@/lib/activity-kinds";
+import { activityPlotIds, plotFilter } from "@/lib/activity-plots";
 
 /**
  * Where every plot sits in its 45-day picking round, most pressing first.
  * Pass a clientId to scope it to one grower; omit it for Jinto's whole book.
  */
 export async function getRoundBoard(clientId?: string): Promise<RoundRow[]> {
-  const plots = await db.plot.findMany({
-    where: { isActive: true, ...(clientId ? { clientId } : {}) },
-    select: {
-      id: true,
-      name: true,
-      clientId: true,
-      client: { select: { name: true, isActive: true } },
-      activities: {
-        where: { type: { in: ["HARVEST", "FERTILIZER", "SPRAYING"] } },
-        select: { type: true, date: true },
-        orderBy: { date: "desc" },
-        take: 40,
+  const CYCLE_TYPES = ["HARVEST", "FERTILIZER", "SPRAYING"];
+
+  const [plots, activities] = await Promise.all([
+    db.plot.findMany({
+      where: { isActive: true, ...(clientId ? { clientId } : {}) },
+      select: {
+        id: true,
+        name: true,
+        clientId: true,
+        client: { select: { name: true, isActive: true } },
       },
-    },
-  });
+    }),
+    /*
+     * Fetched once and grouped here rather than read through each plot's
+     * foreign key.
+     *
+     * The key only knows a visit's *primary* block. A spray round that covered
+     * two blocks would count for one of them and leave the other looking
+     * untouched — so this board, which is how Jinto decides where to go next,
+     * would send him back to a block he worked yesterday and let a genuinely
+     * overdue one sit.
+     *
+     * Grouping in JS also keeps the 45-day window exact. Merging two capped
+     * per-plot lists would silently drop the older half of a busy block's
+     * history, and the cycle is computed from gaps between dates.
+     */
+    db.activity.findMany({
+      where: {
+        // Either the primary kind or an extra one. A visit logged as
+        // "fertilizer, and picked while we were there" has HARVEST only in its
+        // extras, and matching on `type` alone would leave it out of the
+        // picking cycle entirely.
+        OR: [
+          { type: { in: CYCLE_TYPES } },
+          { extraKinds: { some: { key: { in: CYCLE_TYPES } } } },
+        ],
+        ...(clientId ? { clientId } : {}),
+      },
+      orderBy: { date: "desc" },
+      select: {
+        type: true,
+        date: true,
+        plotId: true,
+        extraPlots: { select: { plotId: true } },
+        extraKinds: { select: { key: true } },
+      },
+    }),
+  ]);
+
+  /*
+   * Expanded twice over: once per block the visit covered, once per kind of
+   * work it recorded.
+   *
+   * computeCycle takes a flat list of {type, date} and looks for HARVEST among
+   * them. Handing it only the primary kind hides a harvest that was logged as
+   * the second thing done on a walk — the board would then say "no harvest
+   * logged yet" for a block picked that morning.
+   */
+  const byPlot = new Map<string, { type: string; date: Date }[]>();
+  for (const a of activities) {
+    const kinds = activityKinds(a).filter((k) => CYCLE_TYPES.includes(k));
+    for (const plotId of activityPlotIds(a)) {
+      const list = byPlot.get(plotId) ?? [];
+      for (const type of kinds) list.push({ type, date: a.date });
+      byPlot.set(plotId, list);
+    }
+  }
 
   return plots
     .filter((p) => p.client.isActive)
@@ -30,7 +84,7 @@ export async function getRoundBoard(clientId?: string): Promise<RoundRow[]> {
       plotName: p.name,
       clientId: p.clientId,
       clientName: p.client.name,
-      cycle: computeCycle(p.activities),
+      cycle: computeCycle(byPlot.get(p.id) ?? []),
     }))
     .sort((a, b) => urgencyScore(b.cycle) - urgencyScore(a.cycle));
 }
@@ -55,6 +109,8 @@ export async function getClientOverview(clientId: string) {
         take: 5,
         include: {
           attachments: { where: { kind: "IMAGE" }, take: 3 },
+          extraKinds: { select: { key: true } },
+          extraPlots: { select: { plot: { select: { id: true, name: true } } } },
           plot: { select: { name: true } },
           _count: { select: { attachments: true, materials: true } },
         },
@@ -95,13 +151,17 @@ export async function getActivities(
   return db.activity.findMany({
     where: {
       clientId,
-      ...(filters?.type ? { type: filters.type } : {}),
-      ...(filters?.plotId ? { plotId: filters.plotId } : {}),
+      // Both places, or the filter quietly lies: a visit whose primary kind is
+      // Fertilizer but which also covered weeding must appear under Weeding.
+      ...(filters?.type ? kindFilter(filters.type) : {}),
+      ...(filters?.plotId ? plotFilter(filters.plotId) : {}),
     },
     orderBy: { date: "desc" },
     include: {
       plot: { select: { name: true } },
       attachments: { where: { kind: "IMAGE" }, take: 3 },
+      extraKinds: { select: { key: true } },
+      extraPlots: { select: { plot: { select: { id: true, name: true } } } },
       _count: { select: { attachments: true, materials: true } },
     },
   });
@@ -113,7 +173,10 @@ export async function getActivityForClient(clientId: string, id: string) {
     where: { id, clientId },
     include: {
       plot: true,
-      materials: true,
+      materials: { include: { extraCategories: { select: { key: true } } } },
+      extraKinds: { select: { key: true } },
+      extraPlots: { select: { plot: { select: { id: true, name: true } } } },
+      grades: { orderBy: { driedKg: "desc" } },
       attachments: { orderBy: { createdAt: "asc" } },
       createdBy: { select: { name: true } },
       workers: { include: { worker: { select: { name: true, role: true } } } },
@@ -202,6 +265,7 @@ export async function getInputLog(clientId: string) {
     where: { activity: { clientId } },
     orderBy: { activity: { date: "desc" } },
     include: {
+      extraCategories: { select: { key: true } },
       activity: {
         select: {
           id: true,

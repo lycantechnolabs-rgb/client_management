@@ -1,51 +1,12 @@
-"use client";
-
-import dynamic from "next/dynamic";
 import { STAGES } from "./stages";
-import { useCanRender3D } from "@/lib/scroll";
 import { Reveal } from "@/components/motion";
 
 /**
- * three.js is roughly 150 KB gzipped before anything of ours is added. It is
- * loaded only in the browser, only after the page is interactive, and only on
- * devices that passed the capability check — never on the server, never on a
- * phone that has told us it is saving data.
+ * The scrubbed pod journey used to be a pinned 3D scene. It's gone — this is
+ * the flat stack of stages that used to be its low-end/reduced-motion
+ * fallback, promoted to the only version.
  */
-const CardamomCanvas = dynamic(() => import("./cardamom-canvas"), {
-  ssr: false,
-});
-
-const PodStagesScene = dynamic(() => import("./pod-stages"), {
-  ssr: false,
-  loading: () => <PodJourneyFlat />,
-});
-
-/* -------------------------------------------------------------------------- */
-/* Hero backdrop                                                               */
-/* -------------------------------------------------------------------------- */
-
-export function HeroPods({ className }: { className?: string }) {
-  const can3D = useCanRender3D();
-  if (!can3D) return null;
-  return <CardamomCanvas className={className} />;
-}
-
-/* -------------------------------------------------------------------------- */
-/* The scrubbed pod journey, and its flat twin                                 */
-/* -------------------------------------------------------------------------- */
-
 export function PodJourney() {
-  const can3D = useCanRender3D();
-  return can3D ? <PodStagesScene /> : <PodJourneyFlat />;
-}
-
-/**
- * Same story, no WebGL: the pinned scrub becomes an ordinary stack of stages.
- * This is what a low-end phone, a reduced-motion setting or a data-saver
- * connection gets, and it has to stand on its own — the copy is the content,
- * the pods were only ever the illustration.
- */
-function PodJourneyFlat() {
   return (
     <section className="bg-forest">
       <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">

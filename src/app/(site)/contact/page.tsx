@@ -1,5 +1,7 @@
 import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Card, CardBody } from "@/components/ui";
+import { getContent } from "@/lib/content";
+import { GRIEVANCE_OFFICER } from "@/lib/dpdp";
 import { ContactForm } from "./contact-form";
 
 export const metadata = {
@@ -8,7 +10,9 @@ export const metadata = {
     "Get in touch about buying cardamom, or about having your estate managed.",
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const c = await getContent();
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <header className="max-w-xl">
@@ -26,14 +30,18 @@ export default function ContactPage() {
 
       <div className="mt-10 grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
-          <ContactForm />
+          <ContactForm
+            phone={c.contact_phone}
+            phoneDisplay={c.contact_phone_display}
+            firstName={GRIEVANCE_OFFICER.name.split(" ")[0]}
+          />
         </div>
 
         <div className="space-y-3 lg:col-span-2">
           <Card>
             <CardBody className="space-y-4">
               <a
-                href="tel:8590657900"
+                href={`tel:${c.contact_phone}`}
                 className="flex items-start gap-3 hover:text-forest"
               >
                 <Phone className="mt-0.5 size-5 shrink-0 text-moss" />
@@ -41,12 +49,12 @@ export default function ContactPage() {
                   <span className="block text-sm font-medium text-forest">
                     Phone
                   </span>
-                  <span className="text-sm text-body">8590 657900</span>
+                  <span className="text-sm text-body">{c.contact_phone_display}</span>
                 </span>
               </a>
 
               <a
-                href="https://wa.me/918590657900"
+                href={`https://wa.me/${c.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-start gap-3 hover:text-forest"
@@ -68,9 +76,12 @@ export default function ContactPage() {
                   <span className="block text-sm font-medium text-forest">
                     Email
                   </span>
-                  <span className="text-sm text-body">
-                    hello@aela.co.in
-                  </span>
+                  <a
+                    href={`mailto:${c.contact_email}`}
+                    className="text-sm text-body hover:text-forest"
+                  >
+                    {c.contact_email}
+                  </a>
                 </span>
               </div>
 

@@ -1,6 +1,6 @@
-import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/session";
+import { authorizeAttachment } from "@/lib/attachment-access";
 import { readStoredFile } from "@/lib/files";
+import { storage, storageIsRemote } from "@/lib/storage";
 
 /**
  * The only way to read a client attachment.
@@ -18,24 +18,49 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const user = await getCurrentUser();
-  if (!user) return new Response("Not found", { status: 404 });
+  // The check itself lives in attachment-access.ts, shared with the thumbnail
+  // route. Two copies of an access rule is the shape that drifts: one gets a
+  // fix, the other does not, and the one that did not is still serving other
+  // people's photographs.
+  const access = await authorizeAttachment(id);
+  if (!access.ok) {
+    return new Response(access.status === 403 ? access.reason : "Not found", {
+      status: access.status,
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
 
-  const attachment = await db.attachment.findUnique({
-    where: { id },
-    select: {
-      clientId: true,
-      storageKey: true,
-      filename: true,
-      mimeType: true,
-    },
-  });
-  if (!attachment?.storageKey) return new Response("Not found", { status: 404 });
+  const { attachment } = access;
 
-  const allowed =
-    user.role === "ADMIN" ||
-    (user.role === "CLIENT" && user.clientId === attachment.clientId);
-  if (!allowed) return new Response("Not found", { status: 404 });
+  // With remote storage the bytes are not here to stream, and pulling a 200 MB
+  // video through a serverless function to hand it on would be slow, expensive
+  // and capped by the platform's response limits anyway. The ownership check
+  // above still happens on every request; what changes is that the answer is a
+  // short-lived URL rather than the file.
+  //
+  // That URL is a bearer token for its lifetime, which is why it is minted only
+  // after the check and lives for a minute. The sandbox CSP below is lost on
+  // the redirect, but the risk it defends against — an uploaded file running
+  // script against this origin — goes with it: the bytes are served from the
+  // bucket's origin, which has no access to our session.
+  if (storageIsRemote()) {
+    const url = await storage().readUrl(
+      attachment.storageKey,
+      attachment.filename,
+      attachment.mimeType || "application/octet-stream",
+    );
+    if (!url) return new Response("Not found", { status: 404 });
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        location: url,
+        // The redirect itself must never be cached: the next person asking
+        // may not be allowed, and the URL inside it expires.
+        "cache-control": "private, no-store",
+      },
+    });
+  }
 
   const bytes = await readStoredFile(attachment.storageKey);
   if (!bytes) return new Response("Not found", { status: 404 });

@@ -21,10 +21,16 @@ import { Download, PlayCircle, VideoOff } from "lucide-react";
 export function VideoPlayer({
   src,
   caption,
+  downloadWord,
+  cannotPlayWord,
   className,
 }: {
   src: string;
   caption?: string | null;
+  /** In the reader's language; falls back to English. */
+  downloadWord?: string;
+  /** Likewise. Shown when the browser refuses the codec. */
+  cannotPlayWord?: string;
   className?: string;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -53,7 +59,7 @@ export function VideoPlayer({
         }
       >
         <VideoOff className="size-7 text-muted" aria-hidden="true" />
-        <p className="text-sm text-body">This video cannot play in the browser.</p>
+        <p className="text-sm text-body">{cannotPlayWord ?? "This video cannot play in the browser."}</p>
         <a
           href={src}
           download
@@ -79,7 +85,7 @@ export function VideoPlayer({
         className="aspect-video w-full rounded-xl bg-ink object-cover"
       >
         {/* Shown only by browsers with no <video> support at all. */}
-        <a href={src}>Download the video</a>
+        <a href={src}>{downloadWord ?? "Download the video"}</a>
       </video>
 
       {/* A large tap target over the first frame. The native control is a small

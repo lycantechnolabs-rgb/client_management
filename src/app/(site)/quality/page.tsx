@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Card, CardBody } from "@/components/ui";
 
 export const metadata = {
@@ -63,7 +64,45 @@ export default function QualityPage() {
         </p>
       </header>
 
-      <section className="mt-10">
+      {/* Captioned rather than decorative: the page opens by saying grade is
+          capsule size and colour, and these are the two moments where that is
+          decided — where a capsule starts, and what a clump carries at picking. */}
+      <div className="mt-9 grid gap-4 sm:grid-cols-2">
+        <figure>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-[--radius-card] bg-tint">
+            <Image
+              src="/photos/flower-detail.webp"
+              alt="A cardamom flower open on the panicle, with green capsules forming beside it"
+              fill
+              sizes="(max-width: 640px) 100vw, 420px"
+              className="object-cover"
+            />
+          </div>
+          <figcaption className="mt-2 text-xs leading-relaxed text-muted">
+            Every capsule begins as one of these. The flower is pollinated low on
+            the panicle, and the capsule swells behind it over the weeks that
+            follow.
+          </figcaption>
+        </figure>
+        <figure>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-[--radius-card] bg-tint">
+            <Image
+              src="/photos/panicle-harvest.webp"
+              alt="The base of a cardamom clump, its panicles heavy with unripe green capsules"
+              fill
+              sizes="(max-width: 640px) 100vw, 420px"
+              className="object-cover"
+            />
+          </div>
+          <figcaption className="mt-2 text-xs leading-relaxed text-muted">
+            Panicles run along the ground rather than upward, which is why
+            picking is done by hand, bent low, and why the same clump is picked
+            over and over across a season.
+          </figcaption>
+        </figure>
+      </div>
+
+      <section className="mt-12">
         <h2 className="font-display text-2xl text-forest">Our grades</h2>
         <div className="mt-5 space-y-3">
           {GRADES.map((g) => (

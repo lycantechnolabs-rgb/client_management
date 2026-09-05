@@ -14,6 +14,8 @@ import {
 import { kg, money, relativeDays } from "@/lib/utils";
 import { getRoundBoard } from "@/lib/queries";
 import { RoundBoard } from "@/components/round-board";
+// Jinto works in English; the board is the same component either way.
+import { englishT } from "@/lib/i18n";
 
 export default async function AdminHome() {
   await requireAdmin();
@@ -33,6 +35,8 @@ export default async function AdminHome() {
           client: { select: { name: true } },
           plot: { select: { name: true } },
           attachments: { where: { kind: "IMAGE" }, take: 3 },
+          extraKinds: { select: { key: true } },
+        extraPlots: { select: { plot: { select: { id: true, name: true } } } },
           _count: { select: { attachments: true, materials: true } },
         },
       }),
@@ -77,7 +81,7 @@ export default async function AdminHome() {
       </div>
 
       {/* What needs doing, worked out from the 45-day picking round */}
-      <RoundBoard rows={rounds} limit={8} />
+      <RoundBoard t={englishT} rows={rounds} limit={8} />
 
       <section>
         <SectionHeading
@@ -136,7 +140,8 @@ export default async function AdminHome() {
                 <p className="mb-1 text-xs font-medium text-muted">
                   {a.client.name} · {relativeDays(a.date)}
                 </p>
-                <ActivityCard href={`/admin/activities/${a.id}`} activity={a} />
+                <ActivityCard
+                t={englishT} href={`/admin/activities/${a.id}`} activity={a} />
               </div>
             ))}
           </div>

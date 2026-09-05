@@ -1,3 +1,4 @@
+import type { Translator } from "@/lib/i18n";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -27,33 +28,84 @@ export function kg(value: number | null | undefined) {
   return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 }).format(value)} kg`;
 }
 
-export function shortDate(value: Date | string) {
+/**
+ * Dates in the reader's language.
+ *
+ * `ml-IN` gives Malayalam month names — a grower reading "സെപ്റ്റംബർ" rather
+ * than "Sept" beside otherwise-Malayalam text. The locale is passed in rather
+ * than read here: this file is imported by client components, and reaching for
+ * cookies from a formatting helper would drag a request into every one of them.
+ *
+ * Defaults to en-IN, so every existing caller keeps its current output.
+ */
+export function shortDate(value: Date | string, locale = "en-IN") {
   const d = typeof value === "string" ? new Date(value) : value;
-  return d.toLocaleDateString("en-IN", {
+  return d.toLocaleDateString(locale === "ml" ? "ml-IN" : "en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
 
-export function dayMonth(value: Date | string) {
+export function dayMonth(value: Date | string, locale = "en-IN") {
   const d = typeof value === "string" ? new Date(value) : value;
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return d.toLocaleDateString(locale === "ml" ? "ml-IN" : "en-IN", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
-export function relativeDays(value: Date | string) {
+/**
+ * "Yesterday", "3 days ago" — in the reader's language.
+ *
+ * Takes a translator rather than returning English. Without it this was the
+ * single most visible English word left on an otherwise-Malayalam dashboard:
+ * the "Last visit" tile says one word, and that word was "Yesterday".
+ */
+export function relativeDays(value: Date | string, t?: Translator) {
   const d = typeof value === "string" ? new Date(value) : value;
   const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (days <= 0) return "Today";
-  if (days === 1) return "Yesterday";
-  if (days < 30) return `${days} days ago`;
+  const say = (key: DateKey, vars?: Record<string, string | number>) =>
+    t ? t(key, vars) : fallbackRelative(key, vars);
+
+  if (days <= 0) return say("date.today");
+  if (days === 1) return say("date.yesterday");
+  if (days < 30) return say("date.daysAgo", { days });
   const months = Math.floor(days / 30);
-  return months === 1 ? "1 month ago" : `${months} months ago`;
+  return months === 1
+    ? say("date.oneMonthAgo")
+    : say("date.monthsAgo", { months });
 }
 
-export function monthLabel(value: Date | string) {
+type DateKey =
+  | "date.today"
+  | "date.yesterday"
+  | "date.daysAgo"
+  | "date.oneMonthAgo"
+  | "date.monthsAgo";
+
+/** English, for the callers that have no translator to hand. */
+function fallbackRelative(key: DateKey, vars?: Record<string, string | number>) {
+  switch (key) {
+    case "date.today":
+      return "Today";
+    case "date.yesterday":
+      return "Yesterday";
+    case "date.daysAgo":
+      return `${vars?.days} days ago`;
+    case "date.oneMonthAgo":
+      return "1 month ago";
+    default:
+      return `${vars?.months} months ago`;
+  }
+}
+
+export function monthLabel(value: Date | string, locale = "en-IN") {
   const d = typeof value === "string" ? new Date(value) : value;
-  return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  return d.toLocaleDateString(locale === "ml" ? "ml-IN" : "en-IN", {
+    month: "long",
+    year: "numeric",
+  });
 }
 
 /** Order numbers look like CRD-7K3M9Q — short enough to read over the phone. */

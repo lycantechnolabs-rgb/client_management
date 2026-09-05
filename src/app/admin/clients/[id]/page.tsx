@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CirclePlus, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, CirclePlus, MessageCircle, Paperclip, Phone } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { ActivityCard } from "@/components/activity-card";
@@ -14,8 +14,12 @@ import {
   StatTile,
 } from "@/components/ui";
 import { kg, money, shortDate } from "@/lib/utils";
+import { getClientOverrides } from "@/lib/access";
+import { attachmentHref } from "@/lib/files";
 import { ClientAdminActions } from "./client-actions";
+import { PermissionsPanel } from "./permissions-panel";
 import { PlotRow, WorkerRow } from "./record-row";
+import { englishT } from "@/lib/i18n";
 
 export default async function ClientDetail({
   params,
@@ -48,6 +52,8 @@ export default async function ClientDetail({
         include: {
           plot: { select: { name: true } },
           attachments: { where: { kind: "IMAGE" }, take: 3 },
+          extraKinds: { select: { key: true } },
+        extraPlots: { select: { plot: { select: { id: true, name: true } } } },
           _count: { select: { attachments: true, materials: true } },
         },
       },
@@ -55,6 +61,18 @@ export default async function ClientDetail({
   });
 
   if (!client) notFound();
+
+  const overrides = await getClientOverrides(client.id);
+
+  // Anything the grower added themselves. Without this Jinto never sees it:
+  // every other attachment on this screen arrives through an activity he
+  // logged, and a grower's upload has no activity behind it.
+  const fromGrower = await db.attachment.findMany({
+    where: { clientId: client.id, uploadedById: { not: null } },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    include: { uploadedBy: { select: { name: true } } },
+  });
 
   const [spend, harvest] = await Promise.all([
     db.activity.aggregate({
@@ -73,7 +91,7 @@ export default async function ClientDetail({
     <div className="space-y-6">
       <Link
         href="/admin/clients"
-        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-forest"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted hover:text-forest"
       >
         <ArrowLeft className="size-4" /> Clients
       </Link>
@@ -210,13 +228,56 @@ export default async function ClientDetail({
         </Card>
       </section>
 
+      {fromGrower.length > 0 ? (
+        <section>
+          <SectionHeading title={`Sent in by ${client.name.split(" ")[0]}`} />
+          <Card>
+            <CardBody className="p-0 sm:p-0">
+              <ul className="divide-y divide-line-soft">
+                {fromGrower.map((f) => (
+                  <li key={f.id}>
+                    <a
+                      href={attachmentHref(f)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3.5 hover:bg-cream sm:px-5"
+                    >
+                      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-tint">
+                        <Paperclip className="size-4 text-moss" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium text-forest">
+                          {f.filename}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-muted">
+                          {shortDate(f.createdAt)} · {f.kind.toLowerCase()}
+                          {f.caption ? ` · ${f.caption}` : ""}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </CardBody>
+          </Card>
+        </section>
+      ) : null}
+
+      <section>
+        <PermissionsPanel
+          clientId={client.id}
+          clientName={client.name}
+          overrides={overrides}
+        />
+      </section>
+
       <section>
         <SectionHeading
           title="Recent work"
           action={
             <Link
               href={`/admin/activities?client=${client.id}`}
-              className="text-sm text-moss hover:underline"
+              className="inline-flex min-h-11 items-center text-sm text-moss hover:underline"
             >
               See all
             </Link>
@@ -236,6 +297,7 @@ export default async function ClientDetail({
           <div className="space-y-3">
             {client.activities.map((a) => (
               <ActivityCard
+                t={englishT}
                 key={a.id}
                 href={`/admin/activities/${a.id}`}
                 activity={a}

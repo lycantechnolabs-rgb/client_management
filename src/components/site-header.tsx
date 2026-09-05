@@ -16,7 +16,7 @@ const LINKS = [
   { href: "/contact", label: "Contact" },
 ];
 
-export function SiteHeader() {
+export function SiteHeader({ businessName }: { businessName: string }) {
   const pathname = usePathname();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
@@ -48,7 +48,7 @@ export function SiteHeader() {
             A
           </span>
           <span className="font-display text-lg tracking-wide text-forest">
-            AELA
+            {businessName}
           </span>
         </Link>
 

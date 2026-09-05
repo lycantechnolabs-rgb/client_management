@@ -1,3 +1,4 @@
+import type { Translator } from "@/lib/i18n";
 /**
  * The cardamom round.
  *
@@ -152,11 +153,22 @@ export function urgencyScore(c: PlotCycle) {
   return score;
 }
 
-export function describeCycle(c: PlotCycle): string {
-  if (c.status === "no-history") return "No harvest logged yet";
+/**
+ * The sentence under a plot's name on the round board.
+ *
+ * Takes a translator rather than returning English, and interpolates rather
+ * than concatenating: "Next picking in 25 days" puts the number in the middle,
+ * and building it from pieces would hard-code English word order into every
+ * other language.
+ */
+export function describeCycle(c: PlotCycle, t: Translator): string {
+  if (c.status === "no-history") return t("rounds.noHarvestYet");
   const d = c.daysUntilNextHarvest ?? 0;
-  if (d > 1) return `Next picking in ${d} days`;
-  if (d === 1) return "Next picking tomorrow";
-  if (d === 0) return "Next picking due today";
-  return `Picking ${Math.abs(d)} ${Math.abs(d) === 1 ? "day" : "days"} overdue`;
+  if (d > 1) return t("rounds.nextPickingInDays", { days: d });
+  if (d === 1) return t("rounds.nextPickingTomorrow");
+  if (d === 0) return t("rounds.nextPickingToday");
+  const late = Math.abs(d);
+  return t(late === 1 ? "rounds.pickingOverdueDay" : "rounds.pickingOverdueDays", {
+    days: late,
+  });
 }

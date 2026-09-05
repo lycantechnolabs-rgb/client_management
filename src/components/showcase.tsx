@@ -244,7 +244,7 @@ export function ToldVsSeen() {
   return (
     <div>
       <div
-        className="inline-flex rounded-full border border-line bg-surface p-1"
+        className="glass inline-flex rounded-full p-1"
         role="tablist"
         aria-label="Compare how estate work is reported"
       >
@@ -284,7 +284,7 @@ export function ToldVsSeen() {
           )}
           aria-hidden={seen}
         >
-          <div className="rounded-[--radius-card] border border-line bg-surface p-6">
+          <div className="glass rounded-[--radius-card] p-6">
             <div className="flex items-center gap-2 text-xs text-muted">
               <MessageCircle className="size-3.5" /> A message, some time later
             </div>
@@ -313,7 +313,7 @@ export function ToldVsSeen() {
           )}
           aria-hidden={!seen}
         >
-          <div className="rounded-[--radius-card] border-2 border-moss/40 bg-surface p-6">
+          <div className="glass rounded-[--radius-card] p-6 ring-2 ring-moss/40">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="font-display text-lg text-forest">

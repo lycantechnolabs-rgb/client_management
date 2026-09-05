@@ -6,6 +6,8 @@ import { ActivityCard } from "@/components/activity-card";
 import { ButtonLink, EmptyState } from "@/components/ui";
 import { ACTIVITY_TYPES } from "@/lib/constants";
 import { cn, monthLabel } from "@/lib/utils";
+import { kindFilter } from "@/lib/activity-kinds";
+import { englishT } from "@/lib/i18n";
 
 export const metadata = { title: "Work log" };
 
@@ -21,13 +23,15 @@ export default async function AdminActivities({
     db.activity.findMany({
       where: {
         ...(client ? { clientId: client } : {}),
-        ...(type ? { type } : {}),
+        ...(type ? kindFilter(type) : {}),
       },
       orderBy: { date: "desc" },
       include: {
         client: { select: { id: true, name: true } },
         plot: { select: { name: true } },
         attachments: { where: { kind: "IMAGE" }, take: 3 },
+        extraKinds: { select: { key: true } },
+        extraPlots: { select: { plot: { select: { id: true, name: true } } } },
         _count: { select: { attachments: true, materials: true } },
       },
     }),
@@ -130,6 +134,7 @@ export default async function AdminActivities({
                       {a.client.name}
                     </p>
                     <ActivityCard
+                t={englishT}
                       href={`/admin/activities/${a.id}`}
                       activity={a}
                     />

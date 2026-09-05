@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { FREE_SHIPPING_ABOVE, SHIPPING_FLAT_RATE } from "@/lib/constants";
+import { NOTICE_VERSION } from "@/lib/dpdp";
 import { makeOrderNumber } from "@/lib/utils";
 
 export type CheckoutState = { error?: string; orderNumber?: string };
@@ -30,6 +31,16 @@ export async function placeOrder(
   const parsed = addressSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the form." };
+  }
+
+  // Re-checked here rather than trusted from the `required` attribute: the
+  // browser is not the place a lawful basis is established. Without the tick
+  // there is no consent, and without consent there is no order.
+  if (formData.get("dpdpConsent") !== "yes") {
+    return {
+      error:
+        "Please confirm you agree to your details being used to send the order.",
+    };
   }
 
   let cart: z.infer<typeof cartSchema>;
@@ -95,7 +106,7 @@ export async function placeOrder(
         }
       }
 
-      return tx.order.create({
+      const created = await tx.order.create({
         data: {
           orderNumber: makeOrderNumber(),
           ...parsed.data,
@@ -113,6 +124,24 @@ export async function placeOrder(
           items: { create: items },
         },
       });
+
+      // Written inside the same transaction as the order. If the consent record
+      // could fail on its own we would hold the address without the evidence
+      // that we were allowed to — which is the thing the record exists to
+      // prevent. The order and the permission for it stand or fall together.
+      await tx.consentRecord.create({
+        data: {
+          subject: parsed.data.email.toLowerCase(),
+          purpose: "ORDER_FULFILMENT",
+          granted: true,
+          source: "CHECKOUT",
+          noticeVersion: String(
+            formData.get("noticeVersion") ?? NOTICE_VERSION,
+          ),
+        },
+      });
+
+      return created;
     });
   } catch (err) {
     if (err instanceof Error && err.message === "OUT_OF_STOCK") {

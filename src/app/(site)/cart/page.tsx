@@ -75,7 +75,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={() => remove(line.variantId)}
-                    className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:text-danger"
+                    className="grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:text-danger"
                     aria-label={`Remove ${line.productName}`}
                   >
                     <Trash2 className="size-4" />
@@ -89,10 +89,15 @@ export default function CartPage() {
                       onClick={() =>
                         setQuantity(line.variantId, line.quantity - 1)
                       }
-                      className="grid size-10 place-items-center rounded-full text-forest"
+                      // size-11, not size-10: 44px is the bar this project
+                      // holds controls to, and the product page's identical
+                      // stepper already met it while this one did not. A
+                      // stepper is the control most likely to be tapped
+                      // repeatedly with a thumb.
+                      className="grid size-11 place-items-center rounded-full text-forest"
                       aria-label="Decrease quantity"
                     >
-                      <Minus className="size-3.5" />
+                      <Minus className="size-4" />
                     </button>
                     <span className="w-8 text-center text-sm font-medium text-forest">
                       {line.quantity}
@@ -102,10 +107,10 @@ export default function CartPage() {
                       onClick={() =>
                         setQuantity(line.variantId, line.quantity + 1)
                       }
-                      className="grid size-10 place-items-center rounded-full text-forest"
+                      className="grid size-11 place-items-center rounded-full text-forest"
                       aria-label="Increase quantity"
                     >
-                      <Plus className="size-3.5" />
+                      <Plus className="size-4" />
                     </button>
                   </div>
                   <span className="font-medium text-forest">
