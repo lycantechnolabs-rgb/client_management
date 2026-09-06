@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Icons from "lucide-react";
@@ -96,9 +97,7 @@ export function PortalShell({
           scrolling away with the content. */}
       <aside className="hidden w-64 shrink-0 border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:overflow-y-auto">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
-          <span className="grid size-8 place-items-center rounded-full bg-forest font-display text-[15px] leading-none text-cream">
-            A
-          </span>
+          <Image src="/logo-mark.svg" alt="" width={32} height={32} className="size-8" priority />
           <span className="font-display text-base tracking-wide text-forest">
             AELA
           </span>
