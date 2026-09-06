@@ -68,8 +68,10 @@ export function PortalShell({
 
   return (
     <div className="min-h-dvh lg:flex">
-      {/* Sidebar — desktop only */}
-      <aside className="hidden w-64 shrink-0 border-r border-line bg-surface lg:flex lg:flex-col">
+      {/* Sidebar — desktop only. Sticky and independently scrollable so the
+          nav stays reachable on pages taller than the viewport instead of
+          scrolling away with the content. */}
+      <aside className="hidden w-64 shrink-0 border-r border-line bg-surface lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:overflow-y-auto">
         <Link href="/" className="flex items-center gap-2 px-5 py-5">
           <span className="grid size-8 place-items-center rounded-full bg-forest font-display text-[15px] leading-none text-cream">
             A

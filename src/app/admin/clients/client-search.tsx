@@ -22,6 +22,19 @@ export function ClientSearch({ initial }: { initial: string }) {
   const [value, setValue] = useState(initial);
   const first = useRef(true);
 
+  // Read through a ref rather than depending on `params` directly: every
+  // router.replace() below hands back a new useSearchParams() object, and
+  // depending on that value re-armed this same effect on its own navigation —
+  // an infinite loop of replace-that-triggers-replace with nothing to break
+  // it. The ref always has the latest params without being part of the
+  // dependency array that decides whether this effect reruns. Synced in its
+  // own effect, not during render, which React 19 (rightly) no longer allows
+  // for a ref that render itself doesn't read.
+  const paramsRef = useRef(params);
+  useEffect(() => {
+    paramsRef.current = params;
+  });
+
   useEffect(() => {
     // Skip the run on mount, which would otherwise replace the URL with an
     // identical one before the user has typed anything.
@@ -31,7 +44,7 @@ export function ClientSearch({ initial }: { initial: string }) {
     }
 
     const timer = setTimeout(() => {
-      const next = new URLSearchParams(params);
+      const next = new URLSearchParams(paramsRef.current);
       if (value.trim()) next.set("q", value.trim());
       else next.delete("q");
       const query = next.toString();
@@ -39,7 +52,7 @@ export function ClientSearch({ initial }: { initial: string }) {
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [value, params, router]);
+  }, [value, router]);
 
   return (
     <div className="relative">

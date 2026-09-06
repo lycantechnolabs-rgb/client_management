@@ -31,18 +31,36 @@ export function SiteHeader({ businessName }: { businessName: string }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // The mobile menu covers the screen, so the page behind it should not
+  // silently scroll or stay reachable underneath while it's open.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
   return (
     <header
       className={cn(
-        // Transparent at the top of the page so the header sits on the hero
-        // artwork; it only frosts once there is content passing under it.
-        "sticky top-0 z-40 border-b transition-[background-color,backdrop-filter,border-color,box-shadow] duration-300",
+        "top-0 z-40 border-b transition-[background-color,backdrop-filter,border-color,box-shadow] duration-300",
         scrolled || open
           ? "glass border-white/50"
           : "border-transparent bg-transparent shadow-none",
+        // Closed: sits in flow, pinned to the top on scroll, as before.
+        // Open (mobile only): becomes a full-screen panel — `fixed` takes it
+        // out of the document flow entirely, so it covers the page instead of
+        // pushing it down, and the top bar plus the link list share the
+        // screen as a flex column rather than guessing the top bar's height
+        // to offset a separately positioned panel.
+        open
+          ? "fixed inset-0 flex h-dvh flex-col overflow-hidden lg:sticky lg:inset-auto lg:h-auto lg:flex-none lg:overflow-visible"
+          : "sticky",
       )}
     >
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3.5 sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl shrink-0 items-center gap-3 px-4 py-3.5 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <span className="grid size-8 place-items-center rounded-full bg-forest font-display text-[15px] leading-none text-cream">
             A
@@ -121,7 +139,7 @@ export function SiteHeader({ businessName }: { businessName: string }) {
       </div>
 
       {open ? (
-        <nav className="border-t border-line bg-cream px-4 pb-4 pt-2 lg:hidden">
+        <nav className="min-h-0 flex-1 overflow-y-auto border-t border-line bg-cream px-4 pb-4 pt-2 lg:hidden">
           {[...LINKS, { href: "/login", label: "Client login" }].map((l) => (
             <Link
               key={l.href}

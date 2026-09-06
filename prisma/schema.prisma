@@ -1,10 +1,8 @@
 // Cardamom Client Management Portal + Store
-// Demo schema. SQLite for zero-setup local running.
 //
-// Migrating to PostgreSQL (Neon) later: change provider to "postgresql".
-// String status/type fields are deliberate (SQLite has no enums, and it lets
-// the admin add activity types without a code change). On Postgres they can
-// stay strings or become enums.
+// Running on PostgreSQL (Neon). String status/type fields are kept as
+// strings rather than enums so the admin can add activity types without a
+// code change — that choice predates Postgres and still stands.
 //
 // NOTE: money is Float (rupees) for demo simplicity. For production, store
 // paise as Int to avoid floating-point rounding on order totals.
@@ -14,7 +12,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

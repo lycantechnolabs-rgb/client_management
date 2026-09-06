@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
-import { Badge, Card, CardBody, EmptyState } from "@/components/ui";
+import { Badge, ButtonLink, Card, CardBody, EmptyState } from "@/components/ui";
 import { money, shortDate } from "@/lib/utils";
 import { OrderStatusControl } from "./order-status";
 
@@ -15,15 +15,31 @@ const TONE: Record<string, "muted" | "info" | "warning" | "success" | "danger"> 
   CANCELLED: "danger",
 };
 
-export default async function AdminOrders() {
+// The store never stops taking orders, so a findMany with no limit here
+// fetches every order the business has ever received, with all its line
+// items, on every load. Fine at one order; not fine after a season of sales.
+const PAGE_SIZE = 50;
+
+export default async function AdminOrders({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdmin();
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
 
-  const orders = await db.order.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { items: true },
-  });
+  const [orders, total] = await Promise.all([
+    db.order.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      include: { items: true },
+    }),
+    db.order.count(),
+  ]);
 
-  if (orders.length === 0) {
+  if (total === 0) {
     return (
       <EmptyState
         title="No orders yet"
@@ -31,6 +47,8 @@ export default async function AdminOrders() {
       />
     );
   }
+
+  const hasNextPage = page * PAGE_SIZE < total;
 
   return (
     <div className="space-y-5">
@@ -97,6 +115,29 @@ export default async function AdminOrders() {
           </Card>
         ))}
       </div>
+
+      {page > 1 || hasNextPage ? (
+        <div className="flex items-center justify-between gap-3 border-t border-line-soft pt-4">
+          {page > 1 ? (
+            <ButtonLink href={`/admin/orders?page=${page - 1}`} variant="outline">
+              Newer
+            </ButtonLink>
+          ) : (
+            <span />
+          )}
+          <p className="text-xs text-muted">
+            Page {page} of {Math.max(1, Math.ceil(total / PAGE_SIZE))} ·{" "}
+            {total} in total
+          </p>
+          {hasNextPage ? (
+            <ButtonLink href={`/admin/orders?page=${page + 1}`} variant="outline">
+              Older
+            </ButtonLink>
+          ) : (
+            <span />
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

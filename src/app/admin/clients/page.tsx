@@ -112,8 +112,12 @@ export default async function ClientsPage({
                     <span>
                       {c._count.plots} estate{c._count.plots === 1 ? "" : "s"}
                     </span>
-                    <span>{c._count.activities} jobs</span>
-                    <span>{c._count.workers} workers</span>
+                    <span>
+                      {c._count.activities} job{c._count.activities === 1 ? "" : "s"}
+                    </span>
+                    <span>
+                      {c._count.workers} worker{c._count.workers === 1 ? "" : "s"}
+                    </span>
                   </div>
 
                   <div className="mt-2.5 flex items-baseline justify-between gap-2">

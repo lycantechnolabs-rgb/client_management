@@ -11,21 +11,36 @@ import { englishT } from "@/lib/i18n";
 
 export const metadata = { title: "Work log" };
 
+// Work grows one visit at a time and never stops — a findMany with no limit
+// here fetches the whole company's history, on every load, forever. Fine at
+// 22 rows; not fine a year in. Page it instead.
+const PAGE_SIZE = 50;
+
 export default async function AdminActivities({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string; type?: string; saved?: string }>;
+  searchParams: Promise<{
+    client?: string;
+    type?: string;
+    saved?: string;
+    page?: string;
+  }>;
 }) {
   await requireAdmin();
-  const { client, type, saved } = await searchParams;
+  const { client, type, saved, page: pageParam } = await searchParams;
+  const page = Math.max(1, Number.parseInt(pageParam ?? "1", 10) || 1);
 
-  const [activities, clients] = await Promise.all([
+  const where = {
+    ...(client ? { clientId: client } : {}),
+    ...(type ? kindFilter(type) : {}),
+  };
+
+  const [activities, total, clients] = await Promise.all([
     db.activity.findMany({
-      where: {
-        ...(client ? { clientId: client } : {}),
-        ...(type ? kindFilter(type) : {}),
-      },
+      where,
       orderBy: { date: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
       include: {
         client: { select: { id: true, name: true } },
         plot: { select: { name: true } },
@@ -35,6 +50,7 @@ export default async function AdminActivities({
         _count: { select: { attachments: true, materials: true } },
       },
     }),
+    db.activity.count({ where }),
     db.client.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
@@ -42,9 +58,13 @@ export default async function AdminActivities({
     }),
   ]);
 
+  const hasNextPage = page * PAGE_SIZE < total;
+
   const query = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const merged = { client, type, ...next };
+    // Changing a filter starts back at page 1 — a page number that made
+    // sense for one filter rarely lines up with the results for another.
+    const merged = { client, type, page: "1", ...next };
     for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
     const s = params.toString();
     return s ? `/admin/activities?${s}` : "/admin/activities";
@@ -145,6 +165,29 @@ export default async function AdminActivities({
           ))}
         </div>
       )}
+
+      {page > 1 || hasNextPage ? (
+        <div className="flex items-center justify-between gap-3 border-t border-line-soft pt-4">
+          {page > 1 ? (
+            <ButtonLink href={query({ page: String(page - 1) })} variant="outline">
+              Newer
+            </ButtonLink>
+          ) : (
+            <span />
+          )}
+          <p className="text-xs text-muted">
+            Page {page} of {Math.max(1, Math.ceil(total / PAGE_SIZE))} ·{" "}
+            {total} in total
+          </p>
+          {hasNextPage ? (
+            <ButtonLink href={query({ page: String(page + 1) })} variant="outline">
+              Older
+            </ButtonLink>
+          ) : (
+            <span />
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

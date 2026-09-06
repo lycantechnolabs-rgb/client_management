@@ -54,13 +54,19 @@ export default async function LoginPage({
             <LoginForm next={next} />
           </div>
 
-          <div className="mt-5 rounded-xl border border-dashed border-line bg-tint/40 p-4 text-xs text-body">
-            <p className="mb-2 font-medium text-forest">Demo accounts</p>
-            <p className="font-mono">jinto@aela.co.in · Admin@123</p>
-            <p className="mt-0.5 text-muted">Jinto — full admin</p>
-            <p className="mt-2 font-mono">thomas@example.com · Client@123</p>
-            <p className="mt-0.5 text-muted">Thomas Mathew — grower, 2 estates</p>
-          </div>
+          {process.env.NODE_ENV !== "production" ? (
+            // Demo credentials are a convenience for local/staging review only —
+            // printing real account passwords on a public sign-in page is a
+            // gift to anyone who finds the URL, so this never renders in a
+            // production build.
+            <div className="mt-5 rounded-xl border border-dashed border-line bg-tint/40 p-4 text-xs text-body">
+              <p className="mb-2 font-medium text-forest">Demo accounts</p>
+              <p className="font-mono">jinto@aela.co.in · Admin@123</p>
+              <p className="mt-0.5 text-muted">Jinto — full admin</p>
+              <p className="mt-2 font-mono">thomas@example.com · Client@123</p>
+              <p className="mt-0.5 text-muted">Thomas Mathew — grower, 2 estates</p>
+            </div>
+          ) : null}
 
           <p className="mt-6 text-center text-xs text-muted">
             Forgotten your password? Call Jinto on{" "}
