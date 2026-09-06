@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -62,9 +63,7 @@ export function SiteHeader({ businessName }: { businessName: string }) {
     >
       <div className="mx-auto flex w-full max-w-6xl shrink-0 items-center gap-3 px-4 py-3.5 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-full bg-forest font-display text-[15px] leading-none text-cream">
-            A
-          </span>
+          <Image src="/logo-mark.svg" alt="" width={32} height={32} className="size-8" priority />
           <span className="font-display text-lg tracking-wide text-forest">
             {businessName}
           </span>
