@@ -56,6 +56,19 @@ const nextConfig: NextConfig = {
      * path. Anything genuinely large needs direct-to-storage uploads.
      */
     serverActions: { bodySizeLimit: "4mb" },
+
+    /**
+     * Every admin/dashboard page reads the session, so Next treats all of
+     * them as "dynamic" — and a dynamic route with no `loading.js` boundary
+     * is not prefetched at all (see the admin/ and dashboard/ loading.tsx
+     * files, added alongside this). Even with that boundary, the default
+     * `dynamic` stale time is 0: revisiting a tab within the same few
+     * seconds still pays a full server round trip. 30 seconds means a quick
+     * Home → Workers → Home stays instant; a server action's own
+     * `revalidatePath` still busts this immediately; so editing something
+     * and coming back to look at it is never stale.
+     */
+    staleTimes: { dynamic: 30 },
   },
 
   /**
