@@ -532,7 +532,7 @@ export default async function HomePage() {
           {STEPS.map((s) => (
             <article
               key={s.n}
-              className="glass rounded-[--radius-card] p-8 sm:p-10"
+              className="rounded-[--radius-card] border border-line bg-surface p-8 shadow-card sm:p-10"
             >
               <div className="flex items-start gap-5">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-forest font-display text-sm text-cream">

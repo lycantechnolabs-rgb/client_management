@@ -18,9 +18,13 @@ import { getI18n } from "@/lib/i18n";
 import { translateActivities } from "@/lib/translate/activities";
 
 export default async function DashboardHome() {
-  const c = await getContent();
-  const { locale, t } = await getI18n();
-  const user = await requireClient();
+  // None of these three depend on each other — each is its own round trip
+  // to the database, so run them together rather than one after another.
+  const [c, { locale, t }, user] = await Promise.all([
+    getContent(),
+    getI18n(),
+    requireClient(),
+  ]);
   const [{ plots, recent, driedTotal, saleTotal, spend, activityCount }, rounds] =
     await Promise.all([
       getClientOverview(user.clientId),

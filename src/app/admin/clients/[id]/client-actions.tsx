@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { KeyRound, Loader2, Plus, UserX } from "lucide-react";
+import { KeyRound, Plus, UserX } from "lucide-react";
 import {
   Button,
   Card,
@@ -12,7 +12,8 @@ import {
   SectionHeading,
 } from "@/components/ui";
 import { WORKER_ROLES } from "@/lib/constants";
-import { addPlot, addWorker, resetClientPassword, toggleClientActive } from "../../actions";
+import { makeTempPassword } from "@/lib/utils";
+import { addPlot, addWorker, setClientPassword, toggleClientActive } from "../../actions";
 
 export function ClientAdminActions({
   clientId,
@@ -30,8 +31,9 @@ export function ClientAdminActions({
   plots: { id: string; name: string }[];
 }) {
   const [pending, startTransition] = useTransition();
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"plot" | "worker" | null>(null);
+  const [passwordSet, setPasswordSet] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [panel, setPanel] = useState<"plot" | "worker" | "password" | null>(null);
 
   return (
     <Card>
@@ -54,12 +56,12 @@ export function ClientAdminActions({
           ) : null}
         </div>
 
-        {tempPassword ? (
+        {passwordSet ? (
           <div className="rounded-xl bg-success/8 px-4 py-3">
-            <p className="text-sm text-success">New temporary password:</p>
-            <p className="mt-1 font-mono text-lg text-forest">{tempPassword}</p>
+            <p className="text-sm text-success">Password set.</p>
             <p className="mt-1 text-xs text-muted">
-              Pass it on over WhatsApp. Shown only once.
+              Pass it on over WhatsApp or a call — it stays this way until you
+              set it again.
             </p>
           </div>
         ) : null}
@@ -69,20 +71,14 @@ export function ClientAdminActions({
             type="button"
             variant="outline"
             size="sm"
-            disabled={pending}
-            onClick={() =>
-              startTransition(async () => {
-                const result = await resetClientPassword(clientId);
-                if (result?.message) setTempPassword(result.message);
-              })
-            }
+            onClick={() => {
+              setPasswordError(null);
+              setPasswordSet(false);
+              setPanel(panel === "password" ? null : "password");
+            }}
           >
-            {pending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <KeyRound className="size-4" />
-            )}
-            Reset password
+            <KeyRound className="size-4" />
+            Set password
           </Button>
 
           <Button
@@ -118,6 +114,62 @@ export function ClientAdminActions({
             <Plus className="size-4" /> Add worker
           </Button>
         </div>
+
+        {panel === "password" ? (
+          <form
+            action={async (formData) => {
+              const result = await setClientPassword({}, formData);
+              if (result?.error) {
+                setPasswordError(result.error);
+              } else {
+                setPasswordError(null);
+                setPasswordSet(true);
+                setPanel(null);
+              }
+            }}
+            className="space-y-3 rounded-xl border border-line-soft bg-cream/60 p-4"
+          >
+            <input type="hidden" name="clientId" value={clientId} />
+            <Field label="New password" hint="At least 6 characters. Shared with the grower directly.">
+              <div className="flex gap-2">
+                <Input
+                  name="password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  className="font-mono"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    const input = e.currentTarget
+                      .closest("form")
+                      ?.querySelector<HTMLInputElement>('input[name="password"]');
+                    if (input) input.value = makeTempPassword();
+                  }}
+                >
+                  Suggest
+                </Button>
+              </div>
+            </Field>
+            {passwordError ? <p className="text-sm text-danger">{passwordError}</p> : null}
+            <div className="flex gap-2">
+              <Button type="submit" size="sm">
+                Set password
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPanel(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : null}
 
         {panel === "plot" ? (
           <form

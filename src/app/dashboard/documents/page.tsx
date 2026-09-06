@@ -21,12 +21,13 @@ function prettySize(bytes: number | null) {
 }
 
 export default async function DocumentsPage() {
-  const { locale, t } = await getI18n();
-  const user = await requireClient();
-  const docs = await getDocuments(user.clientId);
-  const canDownload = await can("DOWNLOAD_OWN_FILES");
-  const canUpload = await can("UPLOAD_DOCUMENTS");
-  const canDeleteOwn = await can("DELETE_OWN_UPLOADS");
+  const [{ locale, t }, user] = await Promise.all([getI18n(), requireClient()]);
+  const [docs, canDownload, canUpload, canDeleteOwn] = await Promise.all([
+    getDocuments(user.clientId),
+    can("DOWNLOAD_OWN_FILES"),
+    can("UPLOAD_DOCUMENTS"),
+    can("DELETE_OWN_UPLOADS"),
+  ]);
   // No storage means no upload form. A button that always fails is worse
   // than no button; the operator is told in the server log instead.
   const { limits, available } = uploadCapacity();

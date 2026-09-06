@@ -140,7 +140,17 @@ export function CardamomYear() {
                   key={mo.short}
                   d={arc(200, 200, on ? 192 : 182, 128, start, end)}
                   fill={on ? "#2e4a1c" : LOAD_FILL[mo.load]}
-                  className="cursor-pointer transition-all duration-300"
+                  /*
+                   * A path is not a native interactive element, so a tap's
+                   * focus doesn't reliably read as `:focus-visible` the way
+                   * it does on a real <button> — the browser falls back to
+                   * its default focus ring, drawn around the path's bounding
+                   * box rather than the wedge shape, which shows up as a
+                   * plain black square. Suppressed outright; the wedge's own
+                   * color change already carries the "selected" state, and
+                   * focus-visible still draws a ring for keyboard users.
+                   */
+                  className="cursor-pointer outline-none transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss"
                   onMouseEnter={() => pick(i)}
                   onFocus={() => pick(i)}
                   onClick={() => pick(i)}

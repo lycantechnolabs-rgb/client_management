@@ -83,8 +83,9 @@ export async function createClient(
           phone: data.phone || null,
           passwordHash: await hash(tempPassword),
           role: "CLIENT",
-          // They must change it at first sign-in.
-          mustChangePassword: true,
+          // Permanent from the start — Jinto can reset it any time from the
+          // client's page, and the grower is never nagged to pick their own.
+          mustChangePassword: false,
         },
       },
     },
@@ -96,24 +97,41 @@ export async function createClient(
   redirect(`/admin/clients/${client.id}?created=${encodeURIComponent(tempPassword)}`);
 }
 
-export async function resetClientPassword(clientId: string) {
+/**
+ * Jinto sets a client's login password directly — a permanent one, not a
+ * temporary code the grower is then nagged to replace. Growers reach this
+ * portal over WhatsApp and a phone call, not a support desk, so "here is your
+ * new password" needs to just work from that point on.
+ *
+ * The grower can still change it themselves from Settings; this simply stops
+ * assuming they will, or gating them until they do.
+ */
+export async function setClientPassword(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
   await requireAdmin();
-  const tempPassword = makeTempPassword();
+  const clientId = String(formData.get("clientId") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  if (password.length < 6) {
+    return { error: "Use at least 6 characters." };
+  }
 
   const user = await db.user.findFirst({ where: { clientId, role: "CLIENT" } });
   if (!user) return { error: "No login found for this client." };
 
   await db.user.update({
     where: { id: user.id },
-    data: { passwordHash: await hash(tempPassword), mustChangePassword: true },
+    data: { passwordHash: await hash(password), mustChangePassword: false },
   });
 
   await db.auditLog.create({
-    data: { action: "RESET_PASSWORD", entity: "User", entityId: user.id },
+    data: { action: "SET_CLIENT_PASSWORD", entity: "User", entityId: user.id },
   });
 
   revalidatePath(`/admin/clients/${clientId}`);
-  return { ok: true, message: tempPassword };
+  return { ok: true, message: "Password set." };
 }
 
 export async function toggleClientActive(clientId: string, isActive: boolean) {

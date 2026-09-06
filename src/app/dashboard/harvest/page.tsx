@@ -8,11 +8,10 @@ import { getI18n } from "@/lib/i18n";
 export const metadata = { title: "Harvest" };
 
 export default async function HarvestPage() {
-  const user = await requireClient();
+  const [user, { locale, t }] = await Promise.all([requireClient(), getI18n()]);
   const { harvests, driedTotal, saleTotal } = await getClientOverview(
     user.clientId,
   );
-  const { locale, t } = await getI18n();
 
   if (harvests.length === 0) {
     return (

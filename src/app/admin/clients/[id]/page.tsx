@@ -100,13 +100,13 @@ export default async function ClientDetail({
         <Card className="border-success/40 bg-success/8">
           <CardBody>
             <p className="text-sm font-medium text-success">
-              Client created. Give them this temporary password:
+              Client created. Give them this password:
             </p>
             <p className="mt-2 font-mono text-lg text-forest">{created}</p>
             <p className="mt-1.5 text-xs text-muted">
-              Send it over WhatsApp or tell them on the phone. They&rsquo;ll be
-              asked to choose their own password when they first sign in. This
-              is the only time it&rsquo;s shown.
+              Send it over WhatsApp or tell them on the phone. It stays this
+              way until you set a new one from Account below — this is the
+              only time it&rsquo;s shown here.
             </p>
           </CardBody>
         </Card>

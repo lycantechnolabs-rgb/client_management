@@ -34,13 +34,18 @@ export default async function DashboardLayout({
 }) {
   // Authoritative guard. Middleware only handles navigation.
   const user = await requireClient();
-  const client = await db.client.findUnique({
-    where: { id: user.clientId },
-    select: { name: true, code: true, village: true },
-  });
 
-  const unread = await unreadForClient(user.clientId);
-  const { locale, t } = await getI18n();
+  // Independent of each other — run together rather than one after another,
+  // since this layout re-runs on every navigation inside the portal and each
+  // await here is a full round trip to the database.
+  const [client, unread, { locale, t }] = await Promise.all([
+    db.client.findUnique({
+      where: { id: user.clientId },
+      select: { name: true, code: true, village: true },
+    }),
+    unreadForClient(user.clientId),
+    getI18n(),
+  ]);
   const items = nav(t).map((item) =>
     item.href === "/dashboard/messages" ? { ...item, badge: unread } : item,
   );
