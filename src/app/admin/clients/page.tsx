@@ -23,40 +23,42 @@ export default async function ClientsPage({
   const { q } = await searchParams;
   const term = (q ?? "").trim();
 
-  // SQLite's LIKE is already case-insensitive for ASCII, which is why there is
-  // no `mode: "insensitive"` here. Moving to Postgres will need it added, or
-  // searching for "thomas" will stop finding "Thomas".
+  // Postgres's `contains` is case-sensitive unlike SQLite's, so "thomas"
+  // would stop matching "Thomas Mathew" without this on every field.
   const where = term
     ? {
         OR: [
-          { name: { contains: term } },
-          { code: { contains: term } },
-          { village: { contains: term } },
-          { district: { contains: term } },
-          { phone: { contains: term } },
-          { whatsapp: { contains: term } },
-          { email: { contains: term } },
+          { name: { contains: term, mode: "insensitive" as const } },
+          { code: { contains: term, mode: "insensitive" as const } },
+          { village: { contains: term, mode: "insensitive" as const } },
+          { district: { contains: term, mode: "insensitive" as const } },
+          { phone: { contains: term, mode: "insensitive" as const } },
+          { whatsapp: { contains: term, mode: "insensitive" as const } },
+          { email: { contains: term, mode: "insensitive" as const } },
         ],
       }
     : {};
 
-  const clients = await db.client.findMany({
-    where,
-    orderBy: [{ isActive: "desc" }, { code: "asc" }],
-    include: {
-      _count: { select: { plots: true, activities: true, workers: true } },
-      activities: {
-        orderBy: { date: "desc" },
-        take: 1,
-        select: { date: true },
+  // Independent of each other — one round trip's worth of time saved by not
+  // waiting for the first to finish before starting the second.
+  const [clients, spendByClient] = await Promise.all([
+    db.client.findMany({
+      where,
+      orderBy: [{ isActive: "desc" }, { code: "asc" }],
+      include: {
+        _count: { select: { plots: true, activities: true, workers: true } },
+        activities: {
+          orderBy: { date: "desc" },
+          take: 1,
+          select: { date: true },
+        },
       },
-    },
-  });
-
-  const spendByClient = await db.activity.groupBy({
-    by: ["clientId"],
-    _sum: { totalCost: true },
-  });
+    }),
+    db.activity.groupBy({
+      by: ["clientId"],
+      _sum: { totalCost: true },
+    }),
+  ]);
   const spend = new Map(
     spendByClient.map((s) => [s.clientId, s._sum.totalCost ?? 0]),
   );
