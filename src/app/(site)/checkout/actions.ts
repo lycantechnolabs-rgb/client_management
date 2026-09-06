@@ -1,9 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { FREE_SHIPPING_ABOVE, SHIPPING_FLAT_RATE } from "@/lib/constants";
 import { NOTICE_VERSION } from "@/lib/dpdp";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { makeOrderNumber } from "@/lib/utils";
 
 export type CheckoutState = { error?: string; orderNumber?: string };
@@ -154,6 +156,14 @@ export async function placeOrder(
 }
 
 export async function lookupOrder(_prev: unknown, formData: FormData) {
+  // Public and unauthenticated: nothing but a rate limit stops someone from
+  // grinding through order numbers against a guessed or harvested email.
+  const ip = clientIp(await headers());
+  const limit = await rateLimit(`order-lookup:${ip}`, 20, 10 * 60_000);
+  if (!limit.allowed) {
+    return { error: "Too many attempts. Try again in a few minutes." };
+  }
+
   const orderNumber = String(formData.get("orderNumber") ?? "")
     .trim()
     .toUpperCase();

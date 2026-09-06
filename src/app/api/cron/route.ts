@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { dispatchNotifications } from "@/lib/notify";
 import { queueRoundReminders } from "@/lib/reminders";
 import { purgeExpiredData, describePurge } from "@/lib/retention";
@@ -23,8 +24,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const offered = request.headers.get("authorization");
-  if (offered !== `Bearer ${secret}`) {
+  // Constant-time: a plain !== leaks how many leading characters matched
+  // through response timing, which is exactly the kind of oracle a secret
+  // comparison exists to not have.
+  const offered = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${secret}`;
+  const offeredBuf = Buffer.from(offered);
+  const expectedBuf = Buffer.from(expected);
+  const authorized =
+    offeredBuf.length === expectedBuf.length &&
+    timingSafeEqual(offeredBuf, expectedBuf);
+  if (!authorized) {
     return new Response("Not found", { status: 404 });
   }
 
