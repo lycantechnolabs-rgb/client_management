@@ -163,7 +163,7 @@ export function PortalShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar — mobile */}
-        <header className="glass sticky top-0 z-20 flex items-center justify-between gap-3 border-x-0 border-t-0 border-b-line px-4 py-3 lg:hidden">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-x-0 border-t-0 border-b border-b-line bg-surface px-4 py-3 lg:hidden">
           <div className="min-w-0">
             <p className="truncate font-display text-lg text-forest">{title}</p>
             {subtitle ? (
@@ -203,7 +203,7 @@ export function PortalShell({
       </div>
 
       {/* Bottom tab bar — mobile */}
-      <nav className="glass fixed inset-x-0 bottom-0 z-30 border-x-0 border-b-0 border-t-line pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-x-0 border-b-0 border-t border-t-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
         <div className="grid grid-cols-5">
           {primary.map((item) => {
             const active = isActive(pathname, item.href, root);

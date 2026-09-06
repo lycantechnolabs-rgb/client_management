@@ -70,14 +70,19 @@ export function ButtonLink({
 
 export function Card({
   className,
-  variant = "surface",
+  // "glass" is accepted but no longer renders any differently than
+  // "surface" — the frosted look it used to draw made stacked or scrolling
+  // cards bleed into one another and read as an overlap glitch rather than
+  // a depth cue. Kept as a prop rather than removed so none of its many
+  // call sites across the client and admin sections need to change.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- stripped from ...props below, never rendered
+  variant: _variant = "surface",
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { variant?: "surface" | "glass" }) {
   return (
     <div
       className={cn(
-        "rounded-[--radius-card]",
-        variant === "glass" ? "glass" : "border border-line bg-surface shadow-card",
+        "rounded-[--radius-card] border border-line bg-surface shadow-card",
         className,
       )}
       {...props}
@@ -209,7 +214,10 @@ export function EmptyState({
   title,
   description,
   action,
-  variant = "surface",
+  // See the matching note on Card: "glass" no longer draws a frosted
+  // background, so this always renders the plain dashed-border look.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  variant: _variant = "surface",
 }: {
   title: string;
   description?: string;
@@ -220,7 +228,7 @@ export function EmptyState({
     <div
       className={cn(
         "flex flex-col items-center rounded-[--radius-card] px-6 py-12 text-center",
-        variant === "glass" ? "glass" : "border border-dashed border-line bg-surface/60",
+        "border border-dashed border-line bg-surface/60",
       )}
     >
       <div className="mb-3 grid size-14 place-items-center rounded-full bg-tint text-2xl">
@@ -256,8 +264,7 @@ export function StatTile({
         "rounded-[--radius-card] p-4",
         tone === "forest" && "border border-forest bg-forest text-cream",
         tone === "tint" && "border border-tint bg-tint",
-        tone === "surface" && "border border-line bg-surface",
-        tone === "glass" && "glass",
+        (tone === "surface" || tone === "glass") && "border border-line bg-surface",
       )}
     >
       <p
