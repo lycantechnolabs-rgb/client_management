@@ -40,7 +40,7 @@ export default function OrderLookupPage() {
             <Field label="Order number">
               <Input
                 name="orderNumber"
-                placeholder="CRD-7K3M9Q"
+                placeholder="e.g. CRD-1A2B3C"
                 className="font-mono uppercase"
                 required
               />
@@ -146,11 +146,6 @@ export default function OrderLookupPage() {
           </CardBody>
         </Card>
       ) : null}
-
-      <p className="mt-6 text-center text-sm text-muted">
-        Try the demo order <span className="font-mono">CRD-7K3M9Q</span> with{" "}
-        <span className="font-mono">priya@example.com</span>.
-      </p>
     </div>
   );
 }
