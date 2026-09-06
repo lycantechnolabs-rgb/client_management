@@ -151,10 +151,17 @@ export async function getActivities(
   return db.activity.findMany({
     where: {
       clientId,
-      // Both places, or the filter quietly lies: a visit whose primary kind is
-      // Fertilizer but which also covered weeding must appear under Weeding.
-      ...(filters?.type ? kindFilter(filters.type) : {}),
-      ...(filters?.plotId ? plotFilter(filters.plotId) : {}),
+      // AND, not spread: kindFilter and plotFilter each shape their own `OR`
+      // key, so `{...kindFilter(...), ...plotFilter(...)}` would silently let
+      // the second one overwrite the first's `OR` at the same object key —
+      // whichever filter was applied would stop doing anything the moment the
+      // other one was also active. Both places, or the filter quietly lies: a
+      // visit whose primary kind is Fertilizer but which also covered weeding
+      // must appear under Weeding.
+      AND: [
+        ...(filters?.type ? [kindFilter(filters.type)] : []),
+        ...(filters?.plotId ? [plotFilter(filters.plotId)] : []),
+      ],
     },
     orderBy: { date: "desc" },
     include: {

@@ -43,7 +43,10 @@ export function ActivityCard({
   activity,
   t,
   locale,
-  variant = "surface",
+  // "glass" no longer draws a frosted background — see the note on Card in
+  // components/ui.tsx — so this always renders the plain bordered card.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  variant: _variant = "surface",
 }: Props & { t: Translator; locale?: string; variant?: "surface" | "glass" }) {
   // Every kind of work done on the visit, primary first.
   const kinds = activityKinds(activity);
@@ -60,8 +63,7 @@ export function ActivityCard({
     <Link
       href={href}
       className={cn(
-        "block rounded-[--radius-card] transition-colors hover:border-moss/40",
-        variant === "glass" ? "glass" : "border border-line bg-surface",
+        "block rounded-[--radius-card] border border-line bg-surface transition-colors hover:border-moss/40",
       )}
     >
       <div className="p-4">
