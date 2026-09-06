@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { href: "/admin/language", label: "Malayalam", icon: "Languages" },
   { href: "/admin/permissions", label: "Permissions", icon: "KeyRound" },
   { href: "/admin/privacy", label: "Data requests", icon: "ShieldCheck" },
+  { href: "/admin/profile", label: "Settings", icon: "Settings" },
 ];
 
 export default async function AdminLayout({

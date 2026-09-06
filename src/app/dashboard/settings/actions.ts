@@ -98,7 +98,10 @@ export async function changePassword(
     },
   });
 
+  // A grower changes this from /dashboard/settings; Jinto from /admin/profile.
+  // Revalidating both is harmless for whichever one this caller isn't.
   revalidatePath("/dashboard/settings");
+  revalidatePath("/admin/profile");
 
   return {
     ok: true,
