@@ -16,9 +16,11 @@ import { getI18n } from "@/lib/i18n";
 export const metadata = { title: "Profile" };
 
 export default async function ProfilePage() {
-  const { locale, t } = await getI18n();
-  const c = await getContent();
-  const user = await requireClient();
+  const [{ locale, t }, c, user] = await Promise.all([
+    getI18n(),
+    getContent(),
+    requireClient(),
+  ]);
   const client = await db.client.findUnique({
     where: { id: user.clientId },
     include: {

@@ -17,9 +17,11 @@ export default async function ActivitiesPage({
 }: {
   searchParams: Promise<{ type?: string; plot?: string }>;
 }) {
-  const { locale, t } = await getI18n();
-  const user = await requireClient();
-  const { type, plot } = await searchParams;
+  const [{ locale, t }, user, { type, plot }] = await Promise.all([
+    getI18n(),
+    requireClient(),
+    searchParams,
+  ]);
 
   const [activities, plots] = await Promise.all([
     getActivities(user.clientId, { type, plotId: plot }),

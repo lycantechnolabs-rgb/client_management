@@ -15,8 +15,7 @@ export const metadata = { title: "Input log" };
  * Buyers and certifiers increasingly ask growers for exactly this record.
  */
 export default async function InputsPage() {
-  const { locale, t } = await getI18n();
-  const user = await requireClient();
+  const [{ locale, t }, user] = await Promise.all([getI18n(), requireClient()]);
   const materials = await getInputLog(user.clientId);
 
   if (materials.length === 0) {

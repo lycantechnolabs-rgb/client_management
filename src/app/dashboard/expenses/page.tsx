@@ -15,8 +15,7 @@ import { activityLabelIn } from "@/lib/i18n/labels";
 export const metadata = { title: "Money" };
 
 export default async function ExpensesPage() {
-  const { locale, t } = await getI18n();
-  const user = await requireClient();
+  const [{ locale, t }, user] = await Promise.all([getI18n(), requireClient()]);
   const months = await getSpendByMonth(user.clientId);
 
   if (months.length === 0) {

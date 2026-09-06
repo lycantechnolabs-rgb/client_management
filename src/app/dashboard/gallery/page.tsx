@@ -15,11 +15,11 @@ import { translateMedia } from "@/lib/translate/activities";
 export const metadata = { title: "Photos & videos" };
 
 export default async function GalleryPage() {
-  const { locale, t } = await getI18n();
-  const user = await requireClient();
-  const [images, videos] = await Promise.all([
+  const [{ locale, t }, user] = await Promise.all([getI18n(), requireClient()]);
+  const [images, videos, canDownload] = await Promise.all([
     getMedia(user.clientId, "IMAGE"),
     getMedia(user.clientId, "VIDEO"),
+    can("DOWNLOAD_OWN_FILES"),
   ]);
 
   // A caption is often the only sentence attached to a photograph, so it is
@@ -28,7 +28,6 @@ export default async function GalleryPage() {
     translateMedia(images, locale),
     translateMedia(videos, locale),
   ]);
-  const canDownload = await can("DOWNLOAD_OWN_FILES");
   // Either permission is enough to open the form; the action re-checks per file
   // against the kind it actually turns out to be.
   const canUpload =

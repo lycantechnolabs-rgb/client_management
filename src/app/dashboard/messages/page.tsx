@@ -9,10 +9,8 @@ import { getI18n } from "@/lib/i18n";
 export const metadata = { title: "Messages" };
 
 export default async function GrowerMessagesPage() {
-  const user = await requireClient();
-
+  const [user, { locale, t }] = await Promise.all([requireClient(), getI18n()]);
   const messages = await getThread(user.clientId, user.id);
-  const { locale, t } = await getI18n();
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">

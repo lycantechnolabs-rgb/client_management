@@ -83,27 +83,6 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
       {
-        // Signed-in screens. Without this, some browsers keep the rendered,
-        // authenticated page in the back/forward cache — so signing out and
-        // then pressing Back could show it exactly as it was, session gone or
-        // not, until the page was refreshed by hand. `no-store` here is what
-        // keeps these out of that cache in the first place.
-        source: "/admin",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
-      {
-        source: "/admin/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
-      {
-        source: "/dashboard",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
-      {
-        source: "/dashboard/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
-      {
         // Client attachments, served only after the route checks ownership.
         // Headers set inside a route handler are overwritten by this config,
         // so the sandbox has to be declared here to actually take effect.
