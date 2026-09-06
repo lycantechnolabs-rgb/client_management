@@ -109,6 +109,11 @@ export function RoundBoard({
   t,
   locale,
   variant = "surface",
+  // Admin drills into the grower's page; a grower has no /admin access at
+  // all, so that same link just bounced them straight back to /dashboard —
+  // the button looked broken because, for them, it was. The dashboard page
+  // passes its own href pointing at that estate's own work log instead.
+  getHref = (row) => `/admin/clients/${row.clientId}`,
 }: {
   rows: RoundRow[];
   showClient?: boolean;
@@ -117,6 +122,7 @@ export function RoundBoard({
   t: T;
   locale?: string;
   variant?: "surface" | "glass";
+  getHref?: (row: RoundRow) => string;
 }) {
   const shown = limit ? rows.slice(0, limit) : rows;
   const pressing = rows.filter(
@@ -154,7 +160,7 @@ export function RoundBoard({
         {shown.map((r) => (
           <li key={r.plotId}>
             <Link
-              href={`/admin/clients/${r.clientId}`}
+              href={getHref(r)}
               className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-cream-deep/50 sm:px-5"
             >
               <div className="min-w-0 flex-1">

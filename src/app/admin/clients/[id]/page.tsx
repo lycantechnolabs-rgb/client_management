@@ -32,49 +32,48 @@ export default async function ClientDetail({
   const { id } = await params;
   const { created } = await searchParams;
 
-  const client = await db.client.findUnique({
-    where: { id },
-    include: {
-      // Archived rows are included so Jinto can see and restore them.
-      // The counts decide whether removing something destroys history.
-      plots: {
-        orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
-        include: { _count: { select: { activities: true } } },
-      },
-      workers: {
-        orderBy: [{ isActive: "desc" }, { name: "asc" }],
-        include: { _count: { select: { activityWorkers: true } } },
-      },
-      users: { select: { email: true, lastLoginAt: true, mustChangePassword: true } },
-      activities: {
-        orderBy: { date: "desc" },
-        take: 8,
-        include: {
-          plot: { select: { name: true } },
-          attachments: { where: { kind: "IMAGE" }, take: 3 },
-          extraKinds: { select: { key: true } },
-        extraPlots: { select: { plot: { select: { id: true, name: true } } } },
-          _count: { select: { attachments: true, materials: true } },
+  // None of these five need anything but the route's own `id` — the grower's
+  // uploads and the cost/harvest totals don't wait on the client record
+  // resolving first, so there is no reason they were three round trips deep
+  // in sequence rather than one wave.
+  const [client, overrides, fromGrower, spend, harvest] = await Promise.all([
+    db.client.findUnique({
+      where: { id },
+      include: {
+        // Archived rows are included so Jinto can see and restore them.
+        // The counts decide whether removing something destroys history.
+        plots: {
+          orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
+          include: { _count: { select: { activities: true } } },
+        },
+        workers: {
+          orderBy: [{ isActive: "desc" }, { name: "asc" }],
+          include: { _count: { select: { activityWorkers: true } } },
+        },
+        users: { select: { email: true, lastLoginAt: true, mustChangePassword: true } },
+        activities: {
+          orderBy: { date: "desc" },
+          take: 8,
+          include: {
+            plot: { select: { name: true } },
+            attachments: { where: { kind: "IMAGE" }, take: 3 },
+            extraKinds: { select: { key: true } },
+            extraPlots: { select: { plot: { select: { id: true, name: true } } } },
+            _count: { select: { attachments: true, materials: true } },
+          },
         },
       },
-    },
-  });
-
-  if (!client) notFound();
-
-  const overrides = await getClientOverrides(client.id);
-
-  // Anything the grower added themselves. Without this Jinto never sees it:
-  // every other attachment on this screen arrives through an activity he
-  // logged, and a grower's upload has no activity behind it.
-  const fromGrower = await db.attachment.findMany({
-    where: { clientId: client.id, uploadedById: { not: null } },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    include: { uploadedBy: { select: { name: true } } },
-  });
-
-  const [spend, harvest] = await Promise.all([
+    }),
+    getClientOverrides(id),
+    // Anything the grower added themselves. Without this Jinto never sees it:
+    // every other attachment on this screen arrives through an activity he
+    // logged, and a grower's upload has no activity behind it.
+    db.attachment.findMany({
+      where: { clientId: id, uploadedById: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      include: { uploadedBy: { select: { name: true } } },
+    }),
     db.activity.aggregate({
       where: { clientId: id },
       _sum: { totalCost: true },
@@ -84,6 +83,8 @@ export default async function ClientDetail({
       _sum: { driedWeightKg: true, saleAmount: true },
     }),
   ]);
+
+  if (!client) notFound();
 
   const login = client.users[0];
 

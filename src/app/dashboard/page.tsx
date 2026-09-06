@@ -78,6 +78,7 @@ export default async function DashboardHome() {
           t={t}
           locale={locale}
           variant="glass"
+          getHref={(row) => `/dashboard/activities?plot=${row.plotId}`}
         />
       ) : null}
 
