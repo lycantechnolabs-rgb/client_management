@@ -960,6 +960,20 @@ export function ActivityForm({
                 </p>
               ) : null}
             </Field>
+          ) : clientId ? (
+            <p className="text-sm text-muted">
+              No workers recorded for this client yet.{" "}
+              <a
+                href={`/admin/clients/${clientId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-moss hover:underline"
+              >
+                Add one from their page
+              </a>{" "}
+              to pick them here by name — the count and cost below still work
+              without it.
+            </p>
           ) : null}
 
           <div className="grid grid-cols-2 gap-3">
