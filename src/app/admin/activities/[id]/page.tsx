@@ -7,12 +7,13 @@ import { requireAdmin } from "@/lib/session";
 import { attachmentHref } from "@/lib/files";
 import { Badge, Card, CardBody, Divider, SectionHeading } from "@/components/ui";
 import { VideoPlayer } from "@/components/video-player";
-import { ACTIVITY_TYPES, activityLabel } from "@/lib/constants";
+import { ACTIVITY_TYPES, DOCUMENT_CATEGORIES, activityLabel } from "@/lib/constants";
 import { kg, money, shortDate } from "@/lib/utils";
 import { activityKinds, hasKind } from "@/lib/activity-kinds";
 import { materialCategoryLabels } from "@/lib/material-categories";
 import { humanTranslationsFor } from "@/lib/translate/human";
 import { TranslatePanel } from "./translate-panel";
+import { AddDocumentForm } from "./add-document-form";
 
 export default async function AdminActivityDetail({
   params,
@@ -249,9 +250,9 @@ export default async function AdminActivityDetail({
         </CardBody>
       </Card>
 
-      {docs.length > 0 ? (
-        <section>
-          <SectionHeading title="Documents" />
+      <section>
+        <SectionHeading title="Documents" />
+        {docs.length > 0 ? (
           <div className="space-y-2">
             {docs.map((d) => (
               <a
@@ -261,15 +262,26 @@ export default async function AdminActivityDetail({
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-moss/40"
               >
-                <FileText className="size-5 text-moss" />
-                <span className="truncate text-sm text-forest">
+                <FileText className="size-5 shrink-0 text-moss" />
+                <span className="min-w-0 flex-1 truncate text-sm text-forest">
                   {d.filename}
+                </span>
+                <span className="shrink-0 text-xs text-muted">
+                  {DOCUMENT_CATEGORIES.find((c) => c.key === d.category)?.label ??
+                    "Other"}
                 </span>
               </a>
             ))}
           </div>
-        </section>
-      ) : null}
+        ) : (
+          <p className="mb-3 text-sm text-muted">
+            No bills, invoices or other documents added to this entry yet.
+          </p>
+        )}
+        <div className="mt-3">
+          <AddDocumentForm activityId={activity.id} />
+        </div>
+      </section>
 
       <section>
         <SectionHeading title="For Malayalam readers" />

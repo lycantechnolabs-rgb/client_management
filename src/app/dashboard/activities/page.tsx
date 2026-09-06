@@ -3,6 +3,7 @@ import { requireClient } from "@/lib/session";
 import { getActivities } from "@/lib/queries";
 import { db } from "@/lib/db";
 import { ActivityCard } from "@/components/activity-card";
+import { LinkPendingSpinner } from "@/components/link-spinner";
 import { EmptyState } from "@/components/ui";
 import { ACTIVITY_TYPES } from "@/lib/constants";
 import { cn, monthLabel } from "@/lib/utils";
@@ -145,7 +146,7 @@ function FilterChip({
     <Link
       href={href}
       className={cn(
-        "inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-sm transition-colors",
+        "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm transition-colors",
         active
           ? "border-forest bg-forest text-cream"
           : "border-line bg-surface text-body hover:border-moss/40",
@@ -153,6 +154,7 @@ function FilterChip({
       )}
     >
       {children}
+      <LinkPendingSpinner className="size-3.5" />
     </Link>
   );
 }

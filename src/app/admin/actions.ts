@@ -11,7 +11,7 @@ import { splitKinds } from "@/lib/activity-kinds";
 import { splitCategories } from "@/lib/material-categories";
 import { splitPlots } from "@/lib/activity-plots";
 import { totalsFromLots } from "@/lib/harvest-grades";
-import { CARDAMOM_GRADES } from "@/lib/constants";
+import { CARDAMOM_GRADES, DOCUMENT_CATEGORIES } from "@/lib/constants";
 import { requireAdmin } from "@/lib/session";
 import { BREACH_BOARD_HOURS, makeReference } from "@/lib/dpdp";
 import { permissionByKey, roleDefault } from "@/lib/permissions";
@@ -800,6 +800,80 @@ export async function restoreWorker(id: string) {
 }
 
 /** Removes a single photo, video or document from a work-log entry. */
+/**
+ * A bill, lab report, licence or other document added after a work entry
+ * already exists.
+ *
+ * The "new activity" form lets a PDF ride along with the photos at the moment
+ * the visit is logged, but a bill often turns up later — the supplier's
+ * invoice arrives days after the fertilizer round it paid for. This is that
+ * second door onto the same record, restricted to PDFs (saveUpload's
+ * "DOCUMENT" kind) so a photo taken for this field doesn't end up filed as a
+ * document, or vice versa.
+ */
+export async function addActivityDocument(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const admin = await requireAdmin();
+
+  const activityId = String(formData.get("activityId") ?? "");
+  const activity = await db.activity.findUnique({
+    where: { id: activityId },
+    select: { clientId: true },
+  });
+  if (!activity) return { error: "That work entry no longer exists." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose a file first." };
+  }
+
+  const category = String(formData.get("category") ?? "");
+  const validCategory = DOCUMENT_CATEGORIES.some((c) => c.key === category)
+    ? category
+    : "OTHER";
+
+  let saved;
+  try {
+    saved = await saveUpload(file, ["DOCUMENT"]);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Upload failed." };
+  }
+  if (!saved) return { error: "Choose a file first." };
+
+  await db.attachment.create({
+    data: {
+      clientId: activity.clientId,
+      activityId,
+      kind: saved.kind,
+      url: saved.url,
+      storageKey: saved.storageKey,
+      filename: saved.filename,
+      mimeType: saved.mimeType,
+      sizeBytes: saved.sizeBytes,
+      category: validCategory,
+      uploadedById: admin.id,
+    },
+  });
+
+  await db.auditLog.create({
+    data: {
+      userId: admin.id,
+      action: "ADD_ACTIVITY_DOCUMENT",
+      entity: "Activity",
+      entityId: activityId,
+      meta: JSON.stringify({ filename: saved.filename, category: validCategory }),
+    },
+  });
+
+  revalidatePath(`/admin/activities/${activityId}`);
+  revalidatePath("/dashboard/documents");
+  revalidatePath(`/admin/clients/${activity.clientId}`);
+
+  return { ok: true, message: `${saved.filename} added.` };
+}
+
 export async function removeAttachment(id: string) {
   const admin = await requireAdmin();
 

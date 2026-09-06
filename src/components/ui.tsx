@@ -2,6 +2,7 @@ import * as React from "react";
 import Link from "next/link";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { LinkPendingSpinner } from "@/components/link-spinner";
 
 /* -------------------------------------------------------------------------- */
 /* Button                                                                      */
@@ -53,6 +54,7 @@ export function ButtonLink({
   variant,
   size,
   href,
+  children,
   ...props
 }: React.ComponentProps<typeof Link> & VariantProps<typeof buttonStyles>) {
   return (
@@ -60,7 +62,10 @@ export function ButtonLink({
       href={href}
       className={cn(buttonStyles({ variant, size }), className)}
       {...props}
-    />
+    >
+      {children}
+      <LinkPendingSpinner />
+    </Link>
   );
 }
 

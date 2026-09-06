@@ -3,6 +3,7 @@ import { CirclePlus } from "lucide-react";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { ActivityCard } from "@/components/activity-card";
+import { LinkPendingSpinner } from "@/components/link-spinner";
 import { ButtonLink, EmptyState } from "@/components/ui";
 import { ACTIVITY_TYPES } from "@/lib/constants";
 import { cn, monthLabel } from "@/lib/utils";
@@ -35,7 +36,7 @@ export default async function AdminActivities({
     ...(type ? kindFilter(type) : {}),
   };
 
-  const [activities, total, clients] = await Promise.all([
+  const [activities, total, clients, presentTypeRows] = await Promise.all([
     db.activity.findMany({
       where,
       orderBy: { date: "desc" },
@@ -55,6 +56,15 @@ export default async function AdminActivities({
       where: { isActive: true },
       select: { id: true, name: true },
       orderBy: { code: "asc" },
+    }),
+    // Which type chips to offer. Scoped by client only, never by the type
+    // filter or the page's 50-row limit — either would make choosing a type
+    // narrow the very list of types left to choose from, or hide one that
+    // simply didn't fall on this page.
+    db.activity.findMany({
+      where: client ? { clientId: client } : {},
+      select: { type: true },
+      distinct: ["type"],
     }),
   ]);
 
@@ -78,7 +88,7 @@ export default async function AdminActivities({
     else groups.push({ label, items: [a] });
   }
 
-  const presentTypes = new Set(activities.map((a) => a.type));
+  const presentTypes = new Set(presentTypeRows.map((r) => r.type));
 
   return (
     <div className="space-y-5">
@@ -207,7 +217,7 @@ function Chip({
     <Link
       href={href}
       className={cn(
-        "inline-flex min-h-9 shrink-0 items-center rounded-full border px-3.5 text-sm",
+        "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm",
         active
           ? "border-forest bg-forest text-cream"
           : "border-line bg-surface text-body hover:border-moss/40",
@@ -215,6 +225,7 @@ function Chip({
       )}
     >
       {children}
+      <LinkPendingSpinner className="size-3.5" />
     </Link>
   );
 }
