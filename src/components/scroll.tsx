@@ -502,8 +502,11 @@ function StackItem({
     const covered = mapRange(p, 0.55, 1, 0, 1);
     const remaining = total - 1 - index;
     if (remaining <= 0) return;
+    // Scale only — no opacity fade. These cards are opaque, so a card
+    // slides fully out of view under the solid one on top of it; fading it
+    // as well used to let its edge show as a translucent ghost bleeding
+    // into the card covering it.
     el.style.transform = `scale(${1 - covered * 0.06})`;
-    el.style.opacity = `${1 - covered * 0.35}`;
   }, "cover");
 
   return (

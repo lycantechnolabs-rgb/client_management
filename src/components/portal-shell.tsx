@@ -1,10 +1,32 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Icons from "lucide-react";
 import { cn, initials } from "@/lib/utils";
 import { LanguageSwitch } from "@/components/language-switch";
+
+/**
+ * Undoes the browser's back/forward cache for this screen.
+ *
+ * `Cache-Control: no-store` (see next.config.ts) stops most browsers from
+ * bfcaching admin/dashboard pages at all, but modern Chrome will still
+ * bfcache a `no-store` page in some cases. When that happens, `pageshow`
+ * fires with `persisted: true` instead of the page re-requesting itself —
+ * which is exactly the bug this fixes: sign out, press Back, and the old
+ * authenticated screen reappears exactly as it was until reloaded by hand.
+ * Reloading on that event is what makes the reload automatic instead.
+ */
+function useBfcacheReload() {
+  useEffect(() => {
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) window.location.reload();
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+}
 
 export type NavItem = {
   href: string;
@@ -65,6 +87,7 @@ export function PortalShell({
 }) {
   const pathname = usePathname();
   const primary = items.filter((i) => i.primary).slice(0, 5);
+  useBfcacheReload();
 
   return (
     <div className="min-h-dvh lg:flex">
@@ -121,13 +144,20 @@ export function PortalShell({
               ) : null}
             </div>
           </div>
-          <Link
+          {/*
+            A plain anchor, not next/link: signing out has to be a real
+            navigation. A soft nav here would leave the old, authenticated
+            screen sitting in the browser's back/forward cache — pressing Back
+            afterwards would show it exactly as it was, session gone or not,
+            until the user thought to refresh.
+          */}
+          <a
             href="/api/signout"
             className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-body hover:bg-cream"
           >
             <Icons.LogOut className="size-4.5" />
             Sign out
-          </Link>
+          </a>
         </div>
       </aside>
 

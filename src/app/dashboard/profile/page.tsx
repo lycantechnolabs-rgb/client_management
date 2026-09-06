@@ -132,12 +132,17 @@ export default async function ProfilePage() {
             </ButtonLink>
           </div>
           <Divider className="my-1" />
-          <Link
+          {/*
+            Plain anchor, not next/link — see the note by the same control in
+            portal-shell.tsx. Signing out must be a real navigation so the
+            authenticated page behind it isn't left in the back/forward cache.
+          */}
+          <a
             href="/api/signout"
             className="inline-flex min-h-11 items-center gap-2 text-sm text-danger hover:underline"
           >
             <LogOut className="size-4" /> Sign out
-          </Link>
+          </a>
         </CardBody>
       </Card>
     </div>
