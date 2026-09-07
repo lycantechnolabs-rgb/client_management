@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -88,7 +88,22 @@ export function PortalShell({
 }) {
   const pathname = usePathname();
   const primary = items.filter((i) => i.primary).slice(0, 5);
+  const [menuOpen, setMenuOpen] = useState(false);
   useBfcacheReload();
+
+  // The bottom tab bar only fits five items, but the admin has fifteen — the
+  // rest (Workers, Reports, Permissions, and so on, plus Sign out) had no
+  // way in at all on a phone. This full-screen panel mirrors the desktop
+  // sidebar's complete list instead of the bottom bar's cut-down one.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [menuOpen]);
+
 
   return (
     <div className="min-h-dvh lg:flex">
@@ -179,8 +194,89 @@ export function PortalShell({
             >
               {initials(userName)}
             </Link>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              className="grid size-11 place-items-center rounded-full text-forest hover:bg-tint"
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+            >
+              <Icons.Menu className="size-5" />
+            </button>
           </div>
         </header>
+
+        {/* Full nav menu — mobile only, opened from the top bar */}
+        {menuOpen ? (
+          <div className="fixed inset-0 z-40 flex flex-col bg-surface lg:hidden">
+            <div className="flex items-center justify-between border-b border-line px-4 py-3.5">
+              <div className="flex items-center gap-2">
+                <Image src="/logo-mark.svg" alt="" width={28} height={28} className="size-7" />
+                <span className="font-display text-base tracking-wide text-forest">
+                  AELA
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                className="grid size-11 place-items-center rounded-full text-forest hover:bg-tint"
+                aria-label="Close menu"
+              >
+                <Icons.X className="size-5" />
+              </button>
+            </div>
+
+            <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+              {items.map((item) => {
+                const active = isActive(pathname, item.href, root);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors",
+                      active
+                        ? "bg-tint font-medium text-forest"
+                        : "text-body hover:bg-cream",
+                    )}
+                  >
+                    <Icon name={item.icon} className="size-4.5" />
+                    {item.label}
+                    {item.badge ? (
+                      <span className="ms-auto grid min-w-5 place-items-center rounded-full bg-moss px-1.5 py-0.5 text-[11px] font-medium text-cream">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="border-t border-line p-3">
+              <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-forest text-xs font-medium text-cream">
+                  {initials(userName)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-forest">
+                    {userName}
+                  </p>
+                  {subtitle ? (
+                    <p className="truncate text-xs text-muted">{subtitle}</p>
+                  ) : null}
+                </div>
+              </div>
+              <a
+                href="/api/signout"
+                className="mt-1 flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-body hover:bg-cream"
+              >
+                <Icons.LogOut className="size-4.5" />
+                Sign out
+              </a>
+            </div>
+          </div>
+        ) : null}
 
         {/* Top bar — desktop */}
         <header className="hidden items-center justify-between border-b border-line bg-cream/80 px-8 py-5 lg:flex">
